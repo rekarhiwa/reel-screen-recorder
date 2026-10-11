@@ -13,329 +13,935 @@
     }
 
     :root {
-      --ink: #0e1218;
-      --panel: #181e28;
-      --edge: #2a3444;
-      --text: #ece8e0;
-      --muted: #9aa2ae;
-      --copper: #d48c4a;
-      --copper-dim: #9c6030;
-      --danger: #d64848;
+      --bg: #101318;
+      --bg-2: #171c23;
+      --line: rgba(243, 239, 230, 0.08);
+      --line-strong: rgba(224, 154, 69, 0.45);
+      --text: #f3efe6;
+      --mute: #9aa3af;
+      --amber: #e09a45;
+      --amber-deep: #b56e28;
+      --danger: #e25555;
+      --ok: #4ea57a;
+      --radius: 18px;
+      --font: "Rabar", "Segoe UI", sans-serif;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     html, body {
+      width: 100%;
       height: 100%;
-      background: radial-gradient(120% 80% at 50% -10%, #243044 0%, var(--ink) 55%);
-      color: var(--text);
-      font-family: "Rabar", sans-serif;
       overflow: hidden;
+      color: var(--text);
+      font-family: var(--font);
       user-select: none;
+      background:
+        radial-gradient(120% 70% at 100% 0%, rgba(224,154,69,0.16), transparent 42%),
+        radial-gradient(90% 55% at 0% 100%, rgba(78,165,122,0.08), transparent 40%),
+        linear-gradient(165deg, #1a2028 0%, var(--bg) 48%, #0c0f13 100%);
     }
 
-    body {
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.035;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      z-index: 0;
+    }
+
+    .app {
+      position: relative;
+      z-index: 1;
+      height: 100%;
+      display: grid;
+      grid-template-rows: auto auto auto 1fr auto;
+      gap: 6px;
+      padding: 12px 14px 10px;
+    }
+
+    /* —— top —— */
+    .topbar {
       display: flex;
-      flex-direction: column;
       align-items: center;
-      padding: 28px 22px 20px;
+      justify-content: space-between;
+      gap: 10px;
+      animation: rise 0.45s ease both;
     }
-
     .brand {
-      text-align: center;
-      animation: rise 0.55s ease both;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
     }
-
-    .brand h1 {
-      font-size: 42px;
-      font-weight: 700;
+    .mark {
+      width: 40px;
+      height: 40px;
+      flex-shrink: 0;
+      filter: drop-shadow(0 6px 14px rgba(224,154,69,0.28));
+    }
+    .mark svg { width: 100%; height: 100%; display: block; }
+    .brand-text { min-width: 0; }
+    .brand-text h1 {
+      font-size: 22px;
+      font-weight: 800;
       letter-spacing: 0.02em;
       line-height: 1;
     }
-
-    .brand .sub {
-      margin-top: 6px;
-      color: var(--copper);
-      font-size: 16px;
+    .brand-text p {
+      margin-top: 3px;
+      font-size: 11px;
+      color: var(--amber);
+    }
+    .state-pill {
+      flex-shrink: 0;
+      font-size: 11px;
+      color: var(--mute);
+      border: 1px solid var(--line);
+      background: rgba(23,28,35,0.75);
+      padding: 7px 11px;
+      border-radius: 999px;
+      max-width: 46%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      transition: border-color .2s, color .2s, background .2s;
+    }
+    .state-pill.live {
+      color: #fff;
+      border-color: rgba(226,85,85,0.55);
+      background: rgba(226,85,85,0.18);
+    }
+    .state-pill.pause {
+      color: var(--amber);
+      border-color: var(--line-strong);
+      background: rgba(181,110,40,0.2);
     }
 
-    .brand .tag {
-      margin-top: 8px;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .accent {
-      width: 56px;
-      height: 3px;
-      margin: 12px auto 0;
-      border-radius: 2px;
-      background: var(--copper-dim);
-    }
-
-    .timer {
-      margin-top: 22px;
+    /* —— stage / timer —— */
+    .stage {
       text-align: center;
-      animation: rise 0.65s ease both;
+      padding: 2px 0 0;
+      animation: rise 0.55s ease both;
     }
-
-    .timer .clock {
-      font-size: 52px;
-      font-weight: 700;
+    .clock {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
       font-variant-numeric: tabular-nums;
-      letter-spacing: 0.04em;
       direction: ltr;
       unicode-bidi: isolate;
+      line-height: 1;
+      text-shadow: 0 10px 30px rgba(0,0,0,0.35);
     }
-
-    .timer .meta {
-      margin-top: 6px;
-      font-size: 14px;
-      color: var(--muted);
+    .meta {
+      margin-top: 4px;
+      font-size: 11px;
+      color: var(--mute);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
+    .meta.live { color: var(--danger); }
+    .meta.pause { color: var(--amber); }
 
-    .timer .meta.live { color: var(--danger); }
-
-    .rec-wrap {
-      margin-top: 22px;
+    /* —— dock —— */
+    .dock {
       display: flex;
-      flex-direction: column;
       align-items: center;
+      justify-content: center;
       gap: 12px;
-      animation: rise 0.75s ease both;
+      animation: rise 0.65s ease both;
+    }
+    .side-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(23,28,35,0.9);
+      color: var(--text);
+      font: inherit;
+      font-size: 11px;
+      cursor: pointer;
+      transition: transform .15s, border-color .2s, background .2s, opacity .2s;
+    }
+    .side-btn:hover:not(:disabled) { border-color: var(--line-strong); transform: translateY(-1px); }
+    .side-btn:disabled { opacity: 0.32; cursor: default; }
+    .side-btn.on {
+      border-color: var(--line-strong);
+      background: rgba(181,110,40,0.28);
+      color: var(--amber);
     }
 
     .rec-btn {
-      width: 96px;
-      height: 96px;
+      width: 68px;
+      height: 68px;
       border: none;
       border-radius: 50%;
       background: transparent;
       position: relative;
       cursor: pointer;
     }
-
     .rec-btn::before {
       content: "";
       position: absolute;
-      inset: 2px;
+      inset: 0;
       border-radius: 50%;
-      background: rgba(212, 140, 74, 0.18);
-      animation: pulse 1.8s ease-in-out infinite;
+      background: rgba(224,154,69,0.14);
+      animation: pulse 2s ease-in-out infinite;
     }
-
-    .rec-btn.recording::before {
-      background: rgba(214, 72, 72, 0.22);
-    }
-
+    .rec-btn.recording::before { background: rgba(226,85,85,0.18); }
+    .rec-btn.paused::before { animation: none; background: rgba(224,154,69,0.2); }
     .rec-btn .ring {
       position: absolute;
-      inset: 8px;
+      inset: 6px;
       border-radius: 50%;
-      border: 2px solid var(--copper);
+      border: 2px solid var(--amber);
+      box-shadow: inset 0 0 0 1px rgba(243,239,230,0.06);
     }
-
     .rec-btn.recording .ring { border-color: var(--danger); }
-
+    .rec-btn.paused .ring { border-style: dashed; border-color: var(--amber); }
     .rec-btn .core {
       position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 44px;
-      height: 44px;
+      top: 50%; left: 50%;
+      width: 28px; height: 28px;
       transform: translate(-50%, -50%);
       border-radius: 50%;
-      background: var(--copper);
-      transition: border-radius 0.2s, background 0.2s, width 0.2s, height 0.2s;
+      background: linear-gradient(160deg, #f0b56a, var(--amber-deep));
+      transition: width .2s, height .2s, border-radius .2s, background .2s;
+      box-shadow: 0 8px 18px rgba(181,110,40,0.35);
     }
-
     .rec-btn.recording .core {
-      width: 28px;
-      height: 28px;
-      border-radius: 6px;
-      background: var(--danger);
+      width: 20px; height: 20px;
+      border-radius: 5px;
+      background: linear-gradient(160deg, #f07878, #c43d3d);
+      box-shadow: 0 8px 18px rgba(226,85,85,0.35);
+    }
+    .rec-caption {
+      grid-column: 1 / -1;
+      text-align: center;
+      font-size: 11px;
+      color: var(--amber);
+      margin-top: -2px;
+    }
+    .dock-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
     }
 
-    .rec-label {
-      font-size: 13px;
-      color: var(--copper);
-      letter-spacing: 0.02em;
-    }
-
-    .rec-btn.recording + .rec-label,
-    .rec-btn.saving + .rec-label { color: var(--danger); }
-
-    .card {
-      width: min(360px, 100%);
-      margin-top: 26px;
-      background: var(--panel);
-      border: 1px solid var(--edge);
+    /* —— sheet —— */
+    .sheet {
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--line);
       border-radius: 18px;
-      padding: 18px;
-      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.35);
+      background: linear-gradient(180deg, rgba(28,33,41,0.92), rgba(18,22,28,0.96));
+      box-shadow: 0 18px 40px rgba(0,0,0,0.28);
+      overflow: hidden;
+      animation: rise 0.75s ease both;
+    }
+
+    .panel {
+      display: none;
+      flex-direction: column;
+      gap: 0;
+      padding: 10px 11px 8px;
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      flex: 1;
+      animation: panelIn .28s ease both;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(224,154,69,0.35) transparent;
+    }
+    .panel.active { display: flex; }
+    #panel-cam {
+      gap: 2px;
+    }
+    .section-label {
+      margin-top: 10px;
+      margin-bottom: 2px;
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      color: var(--mute);
+      text-transform: none;
+    }
+    .color-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .swatches {
+      display: flex;
+      gap: 6px;
+      flex: 1;
+    }
+    .swatch {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.12);
+      cursor: pointer;
+      padding: 0;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25);
+      transition: transform .15s, border-color .15s;
+    }
+    .swatch:hover { transform: scale(1.08); }
+    .swatch.active {
+      border-color: var(--amber);
+      box-shadow: 0 0 0 2px rgba(224,154,69,0.25);
+    }
+    .color-pick {
+      width: 34px;
+      height: 28px;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: transparent;
+      cursor: pointer;
+    }
+    .color-pick::-webkit-color-swatch-wrapper { padding: 2px; }
+    .color-pick::-webkit-color-swatch { border: none; border-radius: 5px; }
+    .details-box {
+      margin-top: 8px;
+      padding: 8px 10px 10px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(10,12,16,0.35);
+    }
+    .details-box .field { margin-top: 7px; }
+    .details-box .field:first-child { margin-top: 0; }
+
+    /* —— modern bottom icon dock —— */
+    .bottom-nav {
       animation: rise 0.85s ease both;
     }
+    .nav-track {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+      padding: 6px;
+      border-radius: 20px;
+      border: 1px solid rgba(243,239,230,0.1);
+      background: rgba(14,17,22,0.72);
+      backdrop-filter: blur(14px);
+      box-shadow:
+        0 10px 28px rgba(0,0,0,0.28),
+        inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+    .nav-thumb {
+      position: absolute;
+      top: 6px;
+      bottom: 6px;
+      right: 6px;
+      left: auto;
+      width: calc((100% - 12px - 8px) / 3);
+      border-radius: 15px;
+      background: linear-gradient(160deg, rgba(224,154,69,0.28), rgba(181,110,40,0.22));
+      box-shadow: inset 0 0 0 1px rgba(224,154,69,0.35);
+      transition: transform .28s cubic-bezier(.22,.9,.3,1);
+      pointer-events: none;
+      z-index: 0;
+    }
+    /* RTL dock: index 0 is rightmost; negative X moves toward the left */
+    .nav-thumb[data-i="0"] { transform: translateX(0); }
+    .nav-thumb[data-i="1"] { transform: translateX(calc(-1 * (100% + 4px))); }
+    .nav-thumb[data-i="2"] { transform: translateX(calc(-2 * (100% + 4px))); }
 
-    .section {
-      color: var(--copper);
-      font-size: 12px;
-      margin-bottom: 8px;
+    .tab {
+      position: relative;
+      z-index: 1;
+      border: none;
+      background: transparent;
+      color: var(--mute);
+      font: inherit;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      padding: 8px 4px 7px;
+      border-radius: 15px;
+      transition: color .2s, transform .15s;
+    }
+    .tab svg {
+      width: 20px;
+      height: 20px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .tab span {
+      font-size: 10px;
+      letter-spacing: 0.01em;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active {
+      color: var(--amber);
+    }
+    .tab:active { transform: scale(0.96); }
+
+    @keyframes panelIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
-    select {
+    .field { margin-top: 9px; }
+    .field:first-child { margin-top: 0; }
+    .label {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 5px;
+      font-size: 11px;
+      color: var(--amber);
+    }
+    .label span { color: var(--mute); font-size: 10px; }
+
+    select, input[type="text"] {
       width: 100%;
       appearance: none;
-      background: #202834;
+      border: 1px solid var(--line);
+      background: rgba(12,15,19,0.55);
       color: var(--text);
-      border: 1px solid var(--edge);
       border-radius: 12px;
-      padding: 12px 14px;
+      padding: 9px 11px;
       font: inherit;
-      font-size: 14px;
+      font-size: 12px;
       outline: none;
+      transition: border-color .2s, background .2s;
+    }
+    select:focus, input[type="text"]:focus {
+      border-color: var(--line-strong);
+      background: rgba(12,15,19,0.8);
+    }
+    select:disabled, input:disabled { opacity: 0.45; }
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--amber);
+      margin-top: 2px;
     }
 
-    select:disabled { opacity: 0.55; }
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 9px;
+    }
 
-    .check {
+    .switch-row {
       display: flex;
       align-items: center;
       gap: 10px;
-      margin-top: 14px;
-      font-size: 14px;
-      cursor: pointer;
-    }
-
-    .check input {
-      width: 18px;
-      height: 18px;
-      accent-color: var(--copper);
-    }
-
-    hr {
-      border: none;
-      border-top: 1px solid var(--edge);
-      margin: 14px 0;
-    }
-
-    .status {
-      font-size: 13px;
-      color: var(--muted);
-      line-height: 1.6;
-      min-height: 1.6em;
-    }
-
-    .error {
-      margin-top: 8px;
+      margin-top: 9px;
+      padding: 9px 11px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(12,15,19,0.35);
       font-size: 12px;
-      color: var(--danger);
-      line-height: 1.5;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+    }
+    .switch-row.on {
+      border-color: var(--line-strong);
+      background: rgba(181,110,40,0.14);
+    }
+    .switch-row input {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--amber);
     }
 
+    #dualBlock { display: none; }
+    #dualBlock.show { display: block; }
+
+    .hint {
+      margin-top: 5px;
+      font-size: 10px;
+      color: #7f8793;
+      line-height: 1.45;
+    }
+
+    .footer-status {
+      margin-top: auto;
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+    }
+    .status {
+      font-size: 11px;
+      color: var(--mute);
+      line-height: 1.45;
+      min-height: 1.45em;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+    .error {
+      margin-top: 5px;
+      font-size: 11px;
+      color: var(--danger);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
     .actions {
       display: flex;
-      gap: 8px;
-      margin-top: 12px;
+      gap: 7px;
+      margin-top: 8px;
     }
-
     .pill {
-      border: 1px solid var(--copper);
-      background: var(--copper-dim);
+      border: 1px solid var(--line-strong);
+      background: rgba(181,110,40,0.3);
       color: var(--text);
       border-radius: 999px;
-      padding: 8px 14px;
+      padding: 6px 12px;
+      font: inherit;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .pill.secondary {
+      background: rgba(243,239,230,0.06);
+      border-color: var(--line);
+    }
+    .path, .paths .path {
+      margin-top: 4px;
+      font-size: 10px;
+      color: #6f7682;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      direction: ltr;
+      text-align: right;
+    }
+    .paths { display: none; flex-direction: column; gap: 2px; margin-top: 4px; }
+    .paths.show { display: flex; }
+
+    .btn-block {
+      margin-top: 10px;
+      width: 100%;
+      border: 1px solid var(--line-strong);
+      background: linear-gradient(160deg, rgba(224,154,69,0.28), rgba(181,110,40,0.35));
+      color: var(--text);
+      border-radius: 12px;
+      padding: 10px;
       font: inherit;
       font-size: 12px;
       cursor: pointer;
     }
-
-    .pill.secondary {
-      background: var(--edge);
-      border-color: var(--edge);
+    .btn-block.ghost {
+      background: rgba(243,239,230,0.05);
+      border-color: var(--line);
     }
 
-    .path {
-      margin-top: 8px;
-      font-size: 11px;
-      color: #6e7682;
-      word-break: break-all;
-      direction: ltr;
-      text-align: right;
-      unicode-bidi: isolate;
+    #toasts {
+      position: fixed;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 40;
+      width: min(340px, 90%);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      pointer-events: none;
     }
-
-    .footer {
-      margin-top: auto;
-      padding-top: 18px;
-      font-size: 11px;
-      color: #58606c;
+    .toast {
+      background: rgba(23,28,35,0.96);
+      border: 1px solid var(--line-strong);
+      color: var(--text);
+      border-radius: 14px;
+      padding: 10px 12px;
+      font-size: 12px;
       text-align: center;
+      box-shadow: 0 14px 30px rgba(0,0,0,0.35);
+      animation: toastIn .28s ease both;
     }
+    .toast.error { border-color: rgba(226,85,85,0.6); }
 
     @keyframes pulse {
-      0%, 100% { transform: scale(1); opacity: 0.75; }
-      50% { transform: scale(1.08); opacity: 1; }
+      0%, 100% { transform: scale(1); opacity: 0.7; }
+      50% { transform: scale(1.07); opacity: 1; }
     }
-
     @keyframes rise {
       from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
     }
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* hidden legacy chip ids kept for JS updates */
+    #chipMode, #chipCodec, #chipLive { display: none; }
   </style>
 </head>
 <body>
-  <header class="brand">
-    <h1>ڕیل</h1>
-    <div class="sub">سکرین ڕیکۆردەر</div>
-    <div class="tag">تۆمارکردنی شاشە بە شێوەیەکی پیشەیی</div>
-    <div class="accent"></div>
-  </header>
+  <div id="toasts"></div>
+  <span id="chipMode"></span>
+  <span id="chipCodec"></span>
+  <span id="chipLive" hidden></span>
 
-  <section class="timer">
-    <div class="clock" id="clock">00:00:00</div>
-    <div class="meta" id="meta">ئامادەیە · MP4 · کۆدکردنی ڕەقەکاڵا</div>
-  </section>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="mark" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
+            <defs>
+              <linearGradient id="bezel" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#e8a862"/>
+                <stop offset="100%" stop-color="#b56e28"/>
+              </linearGradient>
+              <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#3a4658"/>
+                <stop offset="100%" stop-color="#151b24"/>
+              </linearGradient>
+            </defs>
+            <rect x="14" y="16" width="68" height="48" rx="8" fill="url(#bezel)"/>
+            <rect x="20" y="22" width="56" height="34" rx="5" fill="url(#glass)"/>
+            <rect x="22" y="24" width="52" height="10" rx="3" fill="#4a586c" opacity="0.5"/>
+            <circle cx="68" cy="30" r="3.5" fill="#e24b4b"/>
+            <rect x="44" y="64" width="8" height="10" rx="2" fill="#d48c4a"/>
+            <rect x="28" y="78.5" width="40" height="5.5" rx="2.5" fill="#e8a862"/>
+            <rect x="28" y="81" width="40" height="4" rx="2" fill="#9c6030"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>ڕیل</h1>
+          <p>سکرین ڕیکۆردەر</p>
+        </div>
+      </div>
+      <div class="state-pill" id="statePill">ئامادە</div>
+    </header>
 
-  <div class="rec-wrap">
-    <button class="rec-btn" id="recBtn" type="button" aria-label="دەستپێکردنی تۆمار">
-      <span class="ring"></span>
-      <span class="core"></span>
-    </button>
-    <div class="rec-label" id="recLabel">دەستپێکردنی تۆمار</div>
-  </div>
+    <section class="stage">
+      <div class="clock" id="clock">00:00:00</div>
+      <div class="meta" id="meta">ئامادەیە بۆ تۆمار</div>
+    </section>
 
-  <section class="card">
-    <div class="section">شاشە</div>
-    <select id="monitor"></select>
-
-    <label class="check">
-      <input type="checkbox" id="cursor" checked />
-      <span>نیشاندانی ماوس لە ڤیدیۆدا</span>
-    </label>
-
-    <hr />
-
-    <div class="status" id="status">ئامادەیە بۆ تۆمارکردنی شاشەکەت</div>
-    <div class="error" id="error" hidden></div>
-
-    <div class="actions" id="actions" hidden>
-      <button class="pill" id="openFile" type="button">کردنەوەی فایل</button>
-      <button class="pill secondary" id="openFolder" type="button">کردنەوەی فۆڵدەر</button>
+    <div class="dock-wrap">
+      <div class="dock">
+        <button class="side-btn" id="pauseBtn" type="button" disabled title="پۆز">پۆز</button>
+        <button class="rec-btn" id="recBtn" type="button" aria-label="تۆمار">
+          <span class="ring"></span>
+          <span class="core"></span>
+        </button>
+        <button class="side-btn" id="stopHint" type="button" disabled title="وەستان">■</button>
+      </div>
+      <div class="rec-caption" id="recLabel">دەستپێکردنی تۆمار</div>
     </div>
-    <div class="path" id="path" hidden></div>
-  </section>
 
-  <footer class="footer">گرتنی گرافیکسی ویندۆز · H.264 MP4</footer>
+    <section class="sheet">
+      <div class="panel active" id="panel-rec">
+        <label class="switch-row" id="dualCheckWrap">
+          <input type="checkbox" id="dual" />
+          <span>تۆماری دوو سکرین لە یەک کاتدا</span>
+        </label>
+        <div class="hint" id="dualHint">دوو فایلی MP4 جیاواز بۆ هەر سکرینێک</div>
+
+        <div class="field">
+          <div class="label">شاشەی یەکەم</div>
+          <select id="monitor"></select>
+        </div>
+
+        <div id="dualBlock">
+          <div class="field">
+            <div class="label">شاشەی دووەم</div>
+            <select id="monitorB"></select>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="label">کوالیتی <span>4K + کەم ستۆرەیج</span></div>
+          <select id="quality">
+            <option value="low">نزم</option>
+            <option value="medium">ناوەند</option>
+            <option value="high" selected>4K کەم ستۆرەیج</option>
+            <option value="ultra">4K باشترین</option>
+          </select>
+        </div>
+
+        <div class="grid2">
+          <div class="field" style="margin-top:0">
+            <div class="label">FPS</div>
+            <select id="fps">
+              <option value="24">٢٤</option>
+              <option value="30" selected>٣٠</option>
+              <option value="60">٦٠</option>
+            </select>
+          </div>
+          <div class="field" style="margin-top:0">
+            <div class="label">کۆدێک</div>
+            <select id="codec">
+              <option value="hevc" selected>HEVC</option>
+              <option value="h264">H.264</option>
+            </select>
+          </div>
+        </div>
+
+        <label class="switch-row"><input type="checkbox" id="cursor" checked /><span>نیشاندانی ماوس</span></label>
+        <label class="switch-row"><input type="checkbox" id="mic" checked /><span>تۆماری مایکڕۆفۆن</span></label>
+        <label class="switch-row"><input type="checkbox" id="annotate" checked /><span>قەلەم و شەیپ لە کاتی تۆماردا</span></label>
+        <button class="btn-block ghost" id="toggleAnnotate" type="button" style="margin-top:8px">کردنەوەی ئامرازەکانی وێنەکێشان</button>
+        <div class="hint">قەلەم · هایلایت · تیر · شەیپ · سێلێکت · ماجیک — لە ڤیدیۆدا دەردەکەون</div>
+
+        <div class="footer-status">
+          <div class="status" id="status">ئامادەیە — لە کاتی تۆماردا تۆ دەیبینیت، بەڵام لە ڤیدیۆدا دەرناچێت</div>
+          <div class="error" id="error" hidden></div>
+          <div class="actions" id="actions" hidden>
+            <button class="pill" id="openFile" type="button">کردنەوەی فایل</button>
+            <button class="pill secondary" id="openFolder" type="button">کردنەوەی فۆڵدەر</button>
+          </div>
+          <div class="paths" id="paths"></div>
+          <div class="path" id="path" hidden></div>
+        </div>
+      </div>
+
+      <div class="panel" id="panel-cam">
+        <label class="switch-row"><input type="checkbox" id="camera" /><span>کامێرای فەیس (پۆپاپ)</span></label>
+
+        <div class="field">
+          <div class="label">هەڵبژاردنی کامێرا</div>
+          <select id="camDevice">
+            <option value="">دوای کردنەوەی کامێرا…</option>
+          </select>
+        </div>
+
+        <div class="grid2">
+          <div class="field" style="margin-top:0">
+            <div class="label">شێوە</div>
+            <select id="shape">
+              <option value="circle" selected>بازنە</option>
+              <option value="square">چوارگۆشە</option>
+              <option value="rounded">گۆشە نەرم</option>
+            </select>
+          </div>
+          <div class="field" style="margin-top:0">
+            <div class="label">فلتەر</div>
+            <select id="camFilter">
+              <option value="none" selected>ئاسایی</option>
+              <option value="soft">نەرم</option>
+              <option value="vivid">ڕوون</option>
+              <option value="mono">ڕەش و سپی</option>
+              <option value="warm">گەرم</option>
+              <option value="cool">سارد</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="label">قەبارە <span id="camSizeVal">220</span></div>
+          <input type="range" id="camSize" min="140" max="360" value="220" />
+        </div>
+
+        <div class="section-label">گرین سکرین</div>
+        <label class="switch-row"><input type="checkbox" id="greenscreen" /><span>لابردنی پاشبنەما</span></label>
+
+        <div class="field">
+          <div class="label">ڕەنگی کلیلی</div>
+          <div class="color-row">
+            <div class="swatches" id="gsSwatches">
+              <button type="button" class="swatch active" data-color="#22c55e" style="background:#22c55e" title="سەوز"></button>
+              <button type="button" class="swatch" data-color="#3b82f6" style="background:#3b82f6" title="شین"></button>
+              <button type="button" class="swatch" data-color="#d946ef" style="background:#d946ef" title="مەجەنتا"></button>
+              <button type="button" class="swatch" data-color="#000000" style="background:#111" title="ڕەش"></button>
+            </div>
+            <input type="color" class="color-pick" id="gsColor" value="#22c55e" title="ڕەنگی خۆت" />
+          </div>
+        </div>
+
+        <div class="details-box">
+          <div class="section-label" style="margin-top:0">وردەکاری</div>
+          <div class="field">
+            <div class="label">هێز <span id="gsStrengthVal">40</span></div>
+            <input type="range" id="gsStrength" min="10" max="90" value="40" />
+          </div>
+          <div class="field">
+            <div class="label">نەرمی لێوار <span id="gsSoftVal">35</span></div>
+            <input type="range" id="gsSoftness" min="0" max="80" value="35" />
+          </div>
+        </div>
+
+        <button class="btn-block" id="toggleCam" type="button" style="margin-top:10px">کردنەوە / داخستنی پۆپاپی کامێرا</button>
+        <div class="hint">پۆپاپەکە هەمیشە لەسەرەوەیە و لە کاتی تۆماردا لە ڤیدیۆدا دەردەکەوێت.</div>
+      </div>
+
+      <div class="panel" id="panel-keys">
+        <div class="field">
+          <div class="label">دەستپێ / وەستان</div>
+          <input type="text" id="hkStart" value="Ctrl+Shift+R" readonly />
+        </div>
+        <div class="field">
+          <div class="label">پۆز / بەردەوامبوونەوە</div>
+          <input type="text" id="hkPause" value="Ctrl+Shift+P" readonly />
+        </div>
+        <div class="field">
+          <div class="label">مایک</div>
+          <input type="text" id="hkMic" value="Ctrl+Shift+M" readonly />
+        </div>
+        <div class="field">
+          <div class="label">کامێرا</div>
+          <input type="text" id="hkCam" value="Ctrl+Shift+C" readonly />
+        </div>
+        <div class="field">
+          <div class="label">قەلەم / وێنەکێشان</div>
+          <input type="text" id="hkAnnotate" value="Ctrl+Shift+D" readonly />
+        </div>
+        <div class="hint">سەر خانەکە کلیک بکە و شۆرکەتی نوێ داگرە.</div>
+        <button class="btn-block ghost" id="saveKeys" type="button">پاشەکەوتکردنی شۆرکەتەکان</button>
+      </div>
+    </section>
+
+    <nav class="bottom-nav" aria-label="بەشەکان">
+      <div class="nav-track">
+        <div class="nav-thumb" id="navThumb" data-i="0"></div>
+        <button class="tab active" data-tab="rec" data-i="0" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/></svg>
+          <span>تۆمار</span>
+        </button>
+        <button class="tab" data-tab="cam" data-i="1" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8.5h10.5A1.5 1.5 0 0 1 16 10v6.5a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 16.5V10A1.5 1.5 0 0 1 4 8.5z"/><path d="M16 11.2l5-2.7v9l-5-2.7z"/></svg>
+          <span>کامێرا</span>
+        </button>
+        <button class="tab" data-tab="keys" data-i="2" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="11" rx="2"/><path d="M7 14h2M11 14h2M15 14h2M8 10h.01M12 10h.01M16 10h.01"/></svg>
+          <span>شۆرکەت</span>
+        </button>
+      </div>
+    </nav>
+  </div>
 
   <script>
     const state = {
-      recording: false,
-      saving: false,
-      lastPath: null,
+      recording: false, saving: false, paused: false, lastPath: null,
+      summary: "4K کەم ستۆرەیج · 30fps · HEVC · یەک سکرین",
+      syncing: false, listening: null, dualAvailable: false,
     };
 
     function send(cmd, data = {}) {
       window.ipc.postMessage(JSON.stringify({ cmd, ...data }));
+    }
+
+    function toast(msg, isError = false) {
+      const box = document.getElementById("toasts");
+      const el = document.createElement("div");
+      el.className = "toast" + (isError ? " error" : "");
+      el.textContent = msg;
+      box.appendChild(el);
+      setTimeout(() => el.remove(), 2600);
+    }
+
+    function fillMonitors(sel, list, selected) {
+      const current = sel.value;
+      sel.innerHTML = "";
+      list.forEach((m, i) => {
+        const opt = document.createElement("option");
+        opt.value = String(i);
+        opt.textContent = m;
+        sel.appendChild(opt);
+      });
+      if (selected != null) sel.value = String(selected);
+      else if (current) sel.value = current;
+    }
+
+    function syncDualUi() {
+      const dual = document.getElementById("dual");
+      const wrap = document.getElementById("dualCheckWrap");
+      const block = document.getElementById("dualBlock");
+      const available = state.dualAvailable;
+      dual.disabled = !available || state.recording || state.saving;
+      document.getElementById("dualHint").textContent = available
+        ? "دوو فایلی MP4 جیاواز بۆ هەر سکرینێک دروست دەبێت"
+        : "تەنها یەک مۆنیتەر دۆزرایەوە — دوو سکرین بەردەست نییە";
+      if (!available) dual.checked = false;
+      wrap.classList.toggle("on", dual.checked);
+      block.classList.toggle("show", dual.checked && available);
+      document.getElementById("chipMode").textContent = dual.checked && available ? "دوو سکرین" : "یەک سکرین";
+      updateStatePill();
+    }
+
+    function updateStatePill() {
+      const pill = document.getElementById("statePill");
+      pill.classList.remove("live", "pause");
+      if (state.recording && state.paused) {
+        pill.textContent = "پۆز";
+        pill.classList.add("pause");
+      } else if (state.recording) {
+        pill.textContent = "ڕاستەوخۆ";
+        pill.classList.add("live");
+      } else if (state.saving) {
+        pill.textContent = "پاشەکەوت…";
+      } else {
+        const dual = document.getElementById("dual").checked && state.dualAvailable;
+        pill.textContent = dual ? "دوو سکرین" : "ئامادە";
+      }
+    }
+
+    function currentSettings() {
+      return {
+        monitor: Number(document.getElementById("monitor").value || 0),
+        monitor_b: Number(document.getElementById("monitorB").value || 0),
+        dual: document.getElementById("dual").checked,
+        cursor: document.getElementById("cursor").checked,
+        quality: document.getElementById("quality").value,
+        fps: Number(document.getElementById("fps").value || 30),
+        codec: document.getElementById("codec").value,
+        mic: document.getElementById("mic").checked,
+        camera: document.getElementById("camera").checked,
+        camDevice: document.getElementById("camDevice").value || "",
+        shape: document.getElementById("shape").value,
+        camFilter: document.getElementById("camFilter").value,
+        greenscreen: document.getElementById("greenscreen").checked,
+        strength: Number(document.getElementById("gsStrength").value || 40),
+        gsColor: document.getElementById("gsColor").value || "#22c55e",
+        gsSoftness: Number(document.getElementById("gsSoftness").value || 35),
+        camSize: Number(document.getElementById("camSize").value || 220),
+        annotate: document.getElementById("annotate").checked,
+        hotkey_start_stop: document.getElementById("hkStart").value,
+        hotkey_mic: document.getElementById("hkMic").value,
+        hotkey_camera: document.getElementById("hkCam").value,
+        hotkey_pause: document.getElementById("hkPause").value,
+        hotkey_annotate: document.getElementById("hkAnnotate").value,
+      };
+    }
+
+    function pushSettings() {
+      if (state.recording || state.saving || state.syncing) return;
+      const a = document.getElementById("monitor");
+      const b = document.getElementById("monitorB");
+      if (document.getElementById("dual").checked && a.value === b.value) {
+        const next = [...b.options].find((o) => o.value !== a.value);
+        if (next) b.value = next.value;
+      }
+      send("settings", currentSettings());
+      updateLocalMeta();
+      syncDualUi();
+    }
+
+    function updateLocalMeta() {
+      const q = document.getElementById("quality").value;
+      const fps = document.getElementById("fps").value;
+      const codec = document.getElementById("codec").value === "hevc" ? "HEVC" : "H.264";
+      const qLabel = { low: "نزم", medium: "ناوەند", high: "4K کەم ستۆرەیج", ultra: "4K باشترین" }[q] || "4K";
+      const mic = document.getElementById("mic").checked ? "مایک" : "بێدەنگ";
+      const dual = document.getElementById("dual").checked && state.dualAvailable ? "دوو سکرین" : "یەک سکرین";
+      state.summary = `${qLabel} · ${fps}fps · ${codec} · ${mic} · ${dual}`;
+      document.getElementById("chipCodec").textContent = codec;
+      if (!state.recording && !state.saving) {
+        document.getElementById("meta").textContent = state.summary;
+        document.getElementById("meta").classList.remove("live", "pause");
+      }
+      updateStatePill();
     }
 
     function fmtTime(secs) {
@@ -345,98 +951,285 @@
       return `${h}:${m}:${s}`;
     }
 
-    function setUi(payload) {
-      if (payload.monitors) {
-        const sel = document.getElementById("monitor");
-        const current = sel.value;
-        sel.innerHTML = "";
-        payload.monitors.forEach((m, i) => {
-          const opt = document.createElement("option");
-          opt.value = String(i);
-          opt.textContent = m;
-          sel.appendChild(opt);
-        });
-        if (current) sel.value = current;
-        else if (payload.selected != null) sel.value = String(payload.selected);
-      }
-
-      if (payload.elapsed != null) {
-        document.getElementById("clock").textContent = fmtTime(payload.elapsed);
-      }
-
-      if (payload.frames != null || payload.recording != null) {
-        const meta = document.getElementById("meta");
-        if (payload.recording) {
-          meta.textContent = `● ڕاستەوخۆ   ${payload.frames || 0} چوارچێوە`;
-          meta.classList.add("live");
-        } else if (!state.saving) {
-          meta.textContent = "ئامادەیە · MP4 · کۆدکردنی ڕەقەکاڵا";
-          meta.classList.remove("live");
+    function setDisabled(disabled) {
+      ["monitor","monitorB","dual","quality","fps","codec","cursor","mic"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (id === "dual") el.disabled = disabled || !state.dualAvailable;
+        else el.disabled = disabled;
+      });
+      document.querySelectorAll(".switch-row").forEach((row) => {
+        const input = row.querySelector("input");
+        if (!input || input.id === "camera" || input.id === "greenscreen") return;
+        if (input.id === "dual" || input.id === "cursor" || input.id === "mic") {
+          row.style.opacity = input.disabled ? "0.55" : "1";
         }
+      });
+    }
+
+    function moveNavThumb(index) {
+      const thumb = document.getElementById("navThumb");
+      if (thumb) thumb.dataset.i = String(index);
+    }
+
+    document.querySelectorAll(".tab").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach((b) => b.classList.remove("active"));
+        document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
+        btn.classList.add("active");
+        const panel = document.getElementById("panel-" + btn.dataset.tab);
+        panel.classList.add("active");
+        // retrigger enter animation
+        panel.style.animation = "none";
+        void panel.offsetWidth;
+        panel.style.animation = "";
+        moveNavThumb(Number(btn.dataset.i || 0));
+      });
+    });
+    moveNavThumb(0);
+
+    function setUi(payload) {
+      state.syncing = true;
+      if (payload.dualAvailable != null) state.dualAvailable = !!payload.dualAvailable;
+
+      if (payload.monitors) {
+        fillMonitors(document.getElementById("monitor"), payload.monitors, payload.selected);
+        fillMonitors(document.getElementById("monitorB"), payload.monitors, payload.selectedB);
+      }
+      if (payload.dual != null) document.getElementById("dual").checked = !!payload.dual;
+      if (payload.quality != null) document.getElementById("quality").value = payload.quality;
+      if (payload.fps != null) document.getElementById("fps").value = String(payload.fps);
+      if (payload.codec != null) document.getElementById("codec").value = payload.codec;
+      if (payload.cursor != null) document.getElementById("cursor").checked = !!payload.cursor;
+      if (payload.mic != null) document.getElementById("mic").checked = !!payload.mic;
+      if (payload.camera != null) document.getElementById("camera").checked = !!payload.camera;
+      if (payload.camDevices) fillCamDevices(payload.camDevices, payload.camDevice);
+      else if (payload.camDevice != null) {
+        const sel = document.getElementById("camDevice");
+        if ([...sel.options].some((o) => o.value === payload.camDevice)) sel.value = payload.camDevice;
+      }
+      if (payload.shape != null) document.getElementById("shape").value = payload.shape;
+      if (payload.camFilter != null) document.getElementById("camFilter").value = payload.camFilter;
+      if (payload.greenscreen != null) document.getElementById("greenscreen").checked = !!payload.greenscreen;
+      if (payload.strength != null) {
+        document.getElementById("gsStrength").value = String(payload.strength);
+        document.getElementById("gsStrengthVal").textContent = String(payload.strength);
+      }
+      if (payload.gsSoftness != null) {
+        document.getElementById("gsSoftness").value = String(payload.gsSoftness);
+        document.getElementById("gsSoftVal").textContent = String(payload.gsSoftness);
+      }
+      if (payload.gsColor) setGsColor(payload.gsColor, false);
+      if (payload.camSize != null) {
+        document.getElementById("camSize").value = String(payload.camSize);
+        document.getElementById("camSizeVal").textContent = String(payload.camSize);
+      }
+      if (payload.hotkey_start_stop) document.getElementById("hkStart").value = payload.hotkey_start_stop;
+      if (payload.hotkey_mic) document.getElementById("hkMic").value = payload.hotkey_mic;
+      if (payload.hotkey_camera) document.getElementById("hkCam").value = payload.hotkey_camera;
+      if (payload.hotkey_pause) document.getElementById("hkPause").value = payload.hotkey_pause;
+      if (payload.hotkey_annotate) document.getElementById("hkAnnotate").value = payload.hotkey_annotate;
+      if (payload.annotate != null) document.getElementById("annotate").checked = !!payload.annotate;
+      if (payload.summary) state.summary = payload.summary;
+      if (payload.elapsed != null) document.getElementById("clock").textContent = fmtTime(payload.elapsed);
+      if (payload.paused != null) state.paused = !!payload.paused;
+
+      const meta = document.getElementById("meta");
+      if (payload.recording) {
+        if (state.paused) {
+          meta.textContent = `پۆز · ${payload.summary || state.summary}`;
+          meta.classList.add("pause");
+          meta.classList.remove("live");
+        } else {
+          meta.textContent = `ڕاستەوخۆ · ${payload.summary || state.summary}`;
+          meta.classList.add("live");
+          meta.classList.remove("pause");
+        }
+      } else if (!state.saving) {
+        meta.textContent = payload.summary || state.summary;
+        meta.classList.remove("live", "pause");
       }
 
-      if (payload.status != null) {
-        document.getElementById("status").textContent = payload.status;
-      }
-
+      if (payload.status != null) document.getElementById("status").textContent = payload.status;
       if (payload.error != null) {
         const el = document.getElementById("error");
-        if (payload.error) {
-          el.hidden = false;
-          el.textContent = payload.error;
-        } else {
-          el.hidden = true;
-          el.textContent = "";
-        }
+        if (payload.error) { el.hidden = false; el.textContent = payload.error; }
+        else { el.hidden = true; el.textContent = ""; }
       }
 
-      if (payload.lastPath != null) {
+      const pathsBox = document.getElementById("paths");
+      const pathEl = document.getElementById("path");
+      if (payload.lastPaths && payload.lastPaths.length) {
+        state.lastPath = payload.lastPaths[0];
+        document.getElementById("actions").hidden = false;
+        pathsBox.classList.add("show");
+        pathsBox.innerHTML = payload.lastPaths.map((p, i) =>
+          `<div class="path">S${i + 1}: ${p}</div>`
+        ).join("");
+        pathEl.hidden = true;
+      } else if (payload.lastPath) {
         state.lastPath = payload.lastPath;
-        const actions = document.getElementById("actions");
-        const path = document.getElementById("path");
-        if (payload.lastPath) {
-          actions.hidden = false;
-          path.hidden = false;
-          path.textContent = payload.lastPath;
-        }
+        document.getElementById("actions").hidden = false;
+        pathEl.hidden = false;
+        pathEl.textContent = payload.lastPath;
+        pathsBox.classList.remove("show");
       }
 
+      if (payload.toast) toast(payload.toast, !!payload.toastError);
       if (payload.recording != null) state.recording = payload.recording;
       if (payload.saving != null) state.saving = payload.saving;
 
       const btn = document.getElementById("recBtn");
       const label = document.getElementById("recLabel");
-      const monitor = document.getElementById("monitor");
-      const cursor = document.getElementById("cursor");
-
-      btn.classList.toggle("recording", state.recording);
+      const pauseBtn = document.getElementById("pauseBtn");
+      btn.classList.toggle("recording", state.recording && !state.paused);
+      btn.classList.toggle("paused", state.recording && state.paused);
       btn.classList.toggle("saving", state.saving);
-      monitor.disabled = state.recording || state.saving;
-      cursor.disabled = state.recording || state.saving;
+      pauseBtn.disabled = !state.recording || state.saving;
+      pauseBtn.classList.toggle("on", state.paused);
+      pauseBtn.textContent = state.paused ? "▶" : "پۆز";
+      document.getElementById("stopHint").disabled = !state.recording || state.saving;
+      setDisabled(state.recording || state.saving);
+      syncDualUi();
+      document.querySelectorAll(".switch-row").forEach((row) => {
+        const input = row.querySelector('input[type="checkbox"]');
+        if (input) row.classList.toggle("on", !!input.checked);
+      });
 
       if (state.saving) label.textContent = "خەریکی پاشەکەوتکردن…";
+      else if (state.recording && state.paused) label.textContent = "پۆز — دوگمەی سەرەکی بۆ وەستان";
       else if (state.recording) label.textContent = "وەستاندنی تۆمار";
-      else label.textContent = "دەستپێکردنی تۆمار";
+      else label.textContent = document.getElementById("dual").checked && state.dualAvailable
+        ? "تۆماری دوو سکرین"
+        : "دەستپێکردنی تۆمار";
+
+      updateStatePill();
+      state.syncing = false;
+    }
+    window.__reelUpdate = setUi;
+
+    function fillCamDevices(list, selected) {
+      const sel = document.getElementById("camDevice");
+      const prev = selected != null ? selected : sel.value;
+      sel.innerHTML = "";
+      if (!list || !list.length) {
+        const o = document.createElement("option");
+        o.value = "";
+        o.textContent = "دوای کردنەوەی کامێرا…";
+        sel.appendChild(o);
+        return;
+      }
+      list.forEach((d, i) => {
+        const o = document.createElement("option");
+        o.value = d.id;
+        o.textContent = d.label || ("کامێرا " + (i + 1));
+        sel.appendChild(o);
+      });
+      if (prev && [...sel.options].some((o) => o.value === prev)) sel.value = prev;
+      else sel.selectedIndex = 0;
     }
 
-    // Called from Rust
-    window.__reelUpdate = setUi;
+    function setGsColor(hex, push) {
+      const color = (hex || "#22c55e").toLowerCase();
+      document.getElementById("gsColor").value = color;
+      document.querySelectorAll("#gsSwatches .swatch").forEach((b) => {
+        b.classList.toggle("active", (b.dataset.color || "").toLowerCase() === color);
+      });
+      if (push) pushSettings();
+    }
+
+    function syncRangeLabels() {
+      document.getElementById("camSizeVal").textContent = document.getElementById("camSize").value;
+      document.getElementById("gsStrengthVal").textContent = document.getElementById("gsStrength").value;
+      document.getElementById("gsSoftVal").textContent = document.getElementById("gsSoftness").value;
+    }
+
+    ["monitor","monitorB","dual","quality","fps","codec","cursor","mic","annotate","camera","camDevice","shape","camFilter","greenscreen","gsStrength","gsSoftness","camSize","gsColor"]
+      .forEach((id) => document.getElementById(id).addEventListener("change", () => {
+        const row = document.getElementById(id)?.closest?.(".switch-row");
+        if (row) row.classList.toggle("on", document.getElementById(id).checked);
+        if (id === "gsColor") setGsColor(document.getElementById("gsColor").value, false);
+        syncRangeLabels();
+        pushSettings();
+      }));
+
+    ["camSize","gsStrength","gsSoftness"].forEach((id) => {
+      document.getElementById(id).addEventListener("input", syncRangeLabels);
+    });
+
+    document.querySelectorAll("#gsSwatches .swatch").forEach((btn) => {
+      btn.addEventListener("click", () => setGsColor(btn.dataset.color, true));
+    });
+    syncRangeLabels();
+
+    document.getElementById("toggleCam").addEventListener("click", () => {
+      document.getElementById("camera").checked = true;
+      document.getElementById("camera").closest(".switch-row")?.classList.add("on");
+      pushSettings();
+      send("camera_toggle", currentSettings());
+    });
 
     document.getElementById("recBtn").addEventListener("click", () => {
       if (state.saving) return;
-      if (state.recording) {
-        send("stop");
-      } else {
-        send("start", {
-          monitor: Number(document.getElementById("monitor").value || 0),
-          cursor: document.getElementById("cursor").checked,
-        });
-      }
+      if (state.recording) send("stop");
+      else send("start", currentSettings());
     });
-
+    document.getElementById("stopHint").addEventListener("click", () => {
+      if (state.recording && !state.saving) send("stop");
+    });
+    document.getElementById("pauseBtn").addEventListener("click", () => {
+      if (!state.recording || state.saving) return;
+      send("toggle_pause");
+    });
     document.getElementById("openFile").addEventListener("click", () => send("open_file"));
     document.getElementById("openFolder").addEventListener("click", () => send("open_folder"));
 
+    function bindHotkeyInput(id) {
+      const el = document.getElementById(id);
+      el.addEventListener("click", () => {
+        state.listening = id;
+        el.value = "کلیل داگرە…";
+      });
+    }
+    ["hkStart","hkPause","hkMic","hkCam","hkAnnotate"].forEach(bindHotkeyInput);
+
+    document.getElementById("toggleAnnotate").addEventListener("click", () => {
+      document.getElementById("annotate").checked = true;
+      document.getElementById("annotate").closest(".switch-row")?.classList.add("on");
+      pushSettings();
+      send("annotate_toggle", currentSettings());
+    });
+
+    window.addEventListener("keydown", (e) => {
+      if (!state.listening) return;
+      e.preventDefault();
+      if (e.key === "Escape") {
+        state.listening = null;
+        pushSettings();
+        return;
+      }
+      const parts = [];
+      if (e.ctrlKey) parts.push("Ctrl");
+      if (e.shiftKey) parts.push("Shift");
+      if (e.altKey) parts.push("Alt");
+      const key = e.key.length === 1 ? e.key.toUpperCase() : e.key;
+      if (!["Control","Shift","Alt","Meta"].includes(e.key)) parts.push(key);
+      if (parts.length < 2) return;
+      document.getElementById(state.listening).value = parts.join("+");
+      state.listening = null;
+    });
+
+    document.getElementById("saveKeys").addEventListener("click", () => {
+      send("save_hotkeys", currentSettings());
+      toast("شۆرکەتەکان پاشەکەوت کران");
+    });
+
+    document.querySelectorAll(".switch-row").forEach((row) => {
+      const input = row.querySelector('input[type="checkbox"]');
+      if (input) row.classList.toggle("on", !!input.checked);
+    });
+
+    syncDualUi();
+    updateLocalMeta();
     send("ready");
     setInterval(() => send("tick"), 200);
   </script>

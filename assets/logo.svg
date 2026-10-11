@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="ڕیل">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1c2430"/>
+      <stop offset="100%" stop-color="#0e1218"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#e8a862"/>
+      <stop offset="100%" stop-color="#9c6030"/>
+    </linearGradient>
+    <linearGradient id="bezel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#e8a862"/>
+      <stop offset="100%" stop-color="#b56e28"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3a4658"/>
+      <stop offset="100%" stop-color="#151b24"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="url(#bg)"/>
+  <rect x="7" y="7" width="114" height="114" rx="26" fill="none" stroke="url(#rim)" stroke-width="2.5" opacity="0.85"/>
+  <rect x="26" y="30" width="76" height="50" rx="9" fill="url(#bezel)"/>
+  <rect x="33" y="36" width="62" height="36" rx="5" fill="url(#glass)"/>
+  <rect x="35" y="38" width="58" height="11" rx="3" fill="#4a586c" opacity="0.5"/>
+  <circle cx="86" cy="45" r="4" fill="#e24b4b"/>
+  <rect x="60" y="80" width="8" height="12" rx="2" fill="#d48c4a"/>
+  <rect x="42" y="94" width="44" height="7" rx="3.5" fill="#e8a862"/>
+  <rect x="42" y="97" width="44" height="5" rx="2.5" fill="#9c6030"/>
+</svg>

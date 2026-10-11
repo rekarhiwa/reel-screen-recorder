@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ckb" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+    }
+    #wrap {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      cursor: grab;
+      overflow: hidden;
+      background: transparent;
+      user-select: none;
+    }
+    #wrap.dragging { cursor: grabbing; }
+    video, canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    video { opacity: 0; pointer-events: none; }
+    #stage {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: transparent;
+      box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+    }
+    #stage.circle { border-radius: 50%; }
+    #stage.square { border-radius: 10%; }
+    #stage.rounded { border-radius: 22%; }
+    #hint {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: #ece8e0;
+      font: 13px sans-serif;
+      background: rgba(14,18,24,0.72);
+      text-align: center;
+      padding: 16px;
+    }
+    #hint.hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <div id="stage" class="circle">
+      <video id="cam" playsinline autoplay muted></video>
+      <canvas id="out"></canvas>
+      <div id="hint">کامێرا…</div>
+    </div>
+  </div>
+  <script>
+    const state = {
+      greenscreen: false,
+      strength: 40,
+      softness: 35,
+      color: "#22c55e",
+      shape: "circle",
+      filter: "none",
+      deviceId: "",
+      stream: null,
+      starting: false,
+    };
+
+    const FILTERS = {
+      none: "none",
+      soft: "brightness(1.06) contrast(0.94) saturate(0.92)",
+      vivid: "contrast(1.18) saturate(1.4)",
+      mono: "grayscale(1) contrast(1.08)",
+      warm: "sepia(0.28) saturate(1.12) brightness(1.03)",
+      cool: "hue-rotate(190deg) saturate(0.88) brightness(1.02)",
+    };
+
+    const video = document.getElementById("cam");
+    const canvas = document.getElementById("out");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    const stage = document.getElementById("stage");
+    const hint = document.getElementById("hint");
+    const wrap = document.getElementById("wrap");
+
+    function send(cmd, data = {}) {
+      window.ipc.postMessage(JSON.stringify({ cmd, ...data }));
+    }
+
+    function applyShape(shape) {
+      state.shape = shape || "circle";
+      stage.className = state.shape;
+    }
+
+    function parseColor(hex) {
+      const h = (hex || "#22c55e").replace("#", "");
+      return {
+        r: parseInt(h.slice(0, 2), 16) || 0,
+        g: parseInt(h.slice(2, 4), 16) || 0,
+        b: parseInt(h.slice(4, 6), 16) || 0,
+      };
+    }
+
+    async function reportDevices(currentId) {
+      try {
+        const all = await navigator.mediaDevices.enumerateDevices();
+        const cams = all
+          .filter((d) => d.kind === "videoinput")
+          .map((d, i) => ({
+            id: d.deviceId,
+            label: d.label || ("کامێرا " + (i + 1)),
+          }));
+        send("cam_devices", { devices: cams, current: currentId || state.deviceId || "" });
+      } catch (_) {}
+    }
+
+    async function startCamera(deviceId) {
+      if (state.starting) return;
+      state.starting = true;
+      try {
+        hint.textContent = "داوای مۆڵەتی کامێرا…";
+        hint.classList.remove("hidden");
+        if (state.stream) {
+          state.stream.getTracks().forEach((t) => t.stop());
+          state.stream = null;
+        }
+        const constraints = {
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: "user",
+          },
+          audio: false,
+        };
+        if (deviceId) {
+          constraints.video = {
+            deviceId: { exact: deviceId },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          };
+        }
+        state.stream = await navigator.mediaDevices.getUserMedia(constraints);
+        const track = state.stream.getVideoTracks()[0];
+        const settings = track ? track.getSettings() : {};
+        state.deviceId = settings.deviceId || deviceId || "";
+        video.srcObject = state.stream;
+        await video.play();
+        hint.classList.add("hidden");
+        await reportDevices(state.deviceId);
+        loop();
+      } catch (e) {
+        if (deviceId) {
+          state.starting = false;
+          return startCamera("");
+        }
+        hint.textContent = "کامێرا بەردەست نییە\n" + (e.message || "");
+        hint.classList.remove("hidden");
+      } finally {
+        state.starting = false;
+      }
+    }
+
+    function chroma(frame, strength, softness, keyHex) {
+      const d = frame.data;
+      const key = parseColor(keyHex);
+      const thr = 55 + (100 - strength) * 1.35;
+      const feather = 8 + softness * 1.1;
+      for (let i = 0; i < d.length; i += 4) {
+        const r = d[i], g = d[i + 1], b = d[i + 2];
+        const dr = r - key.r;
+        const dg = g - key.g;
+        const db = b - key.b;
+        const dist = Math.sqrt(dr * dr + dg * dg + db * db);
+        if (dist <= thr) {
+          d[i + 3] = 0;
+        } else if (dist < thr + feather) {
+          const t = (dist - thr) / feather;
+          d[i + 3] = Math.round(255 * t);
+        }
+      }
+    }
+
+    let looping = false;
+    function loop() {
+      if (looping) return;
+      looping = true;
+      const tick = () => {
+        if (video.readyState >= 2) {
+          const w = video.videoWidth || 640;
+          const h = video.videoHeight || 480;
+          if (canvas.width !== w) canvas.width = w;
+          if (canvas.height !== h) canvas.height = h;
+          ctx.clearRect(0, 0, w, h);
+          ctx.filter = FILTERS[state.filter] || "none";
+          ctx.drawImage(video, 0, 0, w, h);
+          ctx.filter = "none";
+          if (state.greenscreen) {
+            const frame = ctx.getImageData(0, 0, w, h);
+            chroma(frame, state.strength, state.softness, state.color);
+            ctx.putImageData(frame, 0, 0);
+          }
+        }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }
+
+    let dragging = false;
+    let lastX = 0, lastY = 0;
+    wrap.addEventListener("pointerdown", (e) => {
+      dragging = true;
+      lastX = e.screenX;
+      lastY = e.screenY;
+      wrap.classList.add("dragging");
+      wrap.setPointerCapture(e.pointerId);
+      send("cam_drag_start");
+    });
+    wrap.addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      const dx = e.screenX - lastX;
+      const dy = e.screenY - lastY;
+      lastX = e.screenX;
+      lastY = e.screenY;
+      send("cam_drag", { dx, dy });
+    });
+    wrap.addEventListener("pointerup", () => {
+      dragging = false;
+      wrap.classList.remove("dragging");
+    });
+
+    window.__camUpdate = (cfg) => {
+      if (cfg.greenscreen != null) state.greenscreen = !!cfg.greenscreen;
+      if (cfg.strength != null) state.strength = Number(cfg.strength);
+      if (cfg.softness != null) state.softness = Number(cfg.softness);
+      if (cfg.color) state.color = String(cfg.color);
+      if (cfg.shape) applyShape(cfg.shape);
+      if (cfg.filter) state.filter = String(cfg.filter);
+      if (cfg.deviceId != null) {
+        const next = String(cfg.deviceId);
+        if (next && next !== state.deviceId) {
+          state.deviceId = next;
+          startCamera(next);
+        }
+      }
+    };
+
+    applyShape("circle");
+    startCamera("");
+    send("cam_ready");
+  </script>
+</body>
+</html>

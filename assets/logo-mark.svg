@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-hidden="true">
+  <defs>
+    <linearGradient id="bezel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#e8a862"/>
+      <stop offset="100%" stop-color="#b56e28"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3a4658"/>
+      <stop offset="100%" stop-color="#151b24"/>
+    </linearGradient>
+  </defs>
+  <rect x="14" y="16" width="68" height="48" rx="8" fill="url(#bezel)"/>
+  <rect x="20" y="22" width="56" height="34" rx="5" fill="url(#glass)"/>
+  <rect x="22" y="24" width="52" height="10" rx="3" fill="#4a586c" opacity="0.5"/>
+  <circle cx="68" cy="30" r="3.5" fill="#e24b4b"/>
+  <rect x="44" y="64" width="8" height="10" rx="2" fill="#d48c4a"/>
+  <path d="M30 80h36c2.2 0 4-1.4 4-3.2 0-1.2-1-2.3-2.4-2.8L56 70H40l-11.6 4c-1.4.5-2.4 1.6-2.4 2.8 0 1.8 1.8 3.2 4 3.2z" fill="#e8a862"/>
+  <rect x="28" y="78.5" width="40" height="5.5" rx="2.5" fill="#9c6030"/>
+</svg>

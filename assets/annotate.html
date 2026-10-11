@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="ckb" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: transparent;
+      font-family: "Segoe UI", sans-serif;
+      user-select: none;
+    }
+    #root {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+    canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    #toolbar {
+      position: absolute;
+      left: 50%;
+      bottom: 22px;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 10px;
+      border-radius: 18px;
+      background: rgba(14, 17, 22, 0.88);
+      border: 1px solid rgba(243, 239, 230, 0.12);
+      box-shadow: 0 12px 36px rgba(0,0,0,0.4);
+      backdrop-filter: blur(14px);
+      z-index: 5;
+      direction: rtl;
+    }
+    #toolbar.hidden { display: none; }
+    .tool {
+      width: 38px;
+      height: 38px;
+      border: none;
+      border-radius: 12px;
+      background: transparent;
+      color: #9aa3af;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: background .15s, color .15s, transform .1s;
+    }
+    .tool svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .tool:hover { color: #f3efe6; background: rgba(255,255,255,0.06); }
+    .tool.active {
+      color: #e09a45;
+      background: rgba(224,154,69,0.18);
+      box-shadow: inset 0 0 0 1px rgba(224,154,69,0.35);
+    }
+    .tool:active { transform: scale(0.95); }
+    .sep {
+      width: 1px;
+      height: 22px;
+      background: rgba(243,239,230,0.12);
+      margin: 0 2px;
+    }
+    .swatch {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.15);
+      cursor: pointer;
+      padding: 0;
+    }
+    .swatch.active { border-color: #e09a45; }
+    #size {
+      width: 72px;
+      accent-color: #e09a45;
+    }
+    .hint {
+      position: absolute;
+      top: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(14,17,22,0.75);
+      color: #f3efe6;
+      font-size: 12px;
+      border: 1px solid rgba(243,239,230,0.1);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s;
+      z-index: 6;
+      white-space: nowrap;
+    }
+    .hint.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <canvas id="board"></canvas>
+    <div class="hint" id="hint">قەلەم ئامادەیە — بکێشە</div>
+    <div id="toolbar">
+      <button class="tool" data-tool="pointer" title="ماوس (کلیک تێدەپەڕێت)" type="button">
+        <svg viewBox="0 0 24 24"><path d="M4 3l8 18 2-7 7-2z"/></svg>
+      </button>
+      <button class="tool active" data-tool="pen" title="قەلەم" type="button">
+        <svg viewBox="0 0 24 24"><path d="M4 20l3.2-1 11-11a2 2 0 0 0 0-3l-1.2-1.2a2 2 0 0 0-3 0l-11 11L4 20z"/><path d="M13 6l5 5"/></svg>
+      </button>
+      <button class="tool" data-tool="high" title="هایلایتەر" type="button">
+        <svg viewBox="0 0 24 24"><path d="M4 17l4 3 12-12-3-3L4 17z"/><path d="M14 5l5 5"/></svg>
+      </button>
+      <div class="sep"></div>
+      <button class="tool" data-tool="arrow" title="تیر" type="button">
+        <svg viewBox="0 0 24 24"><path d="M4 12h14"/><path d="M14 6l6 6-6 6"/></svg>
+      </button>
+      <button class="tool" data-tool="rect" title="چوارگۆشە" type="button">
+        <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/></svg>
+      </button>
+      <button class="tool" data-tool="ellipse" title="بازنە" type="button">
+        <svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="8" ry="6"/></svg>
+      </button>
+      <div class="sep"></div>
+      <button class="tool" data-tool="select" title="سێلێکت" type="button">
+        <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="1" stroke-dasharray="3 2"/></svg>
+      </button>
+      <button class="tool" data-tool="magic" title="ماجیک سێلێکت" type="button">
+        <svg viewBox="0 0 24 24"><path d="M12 3l1.4 4.2L18 9l-4.2 1.4L12 15l-1.4-4.6L6 9l4.6-1.8L12 3z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z"/></svg>
+      </button>
+      <button class="tool" data-tool="eraser" title="سڕینەوە" type="button">
+        <svg viewBox="0 0 24 24"><path d="M5 15l7-7 5 5-7 7H5v-5z"/><path d="M9 19h10"/></svg>
+      </button>
+      <div class="sep"></div>
+      <button class="swatch active" data-color="#ff4d4f" style="background:#ff4d4f" type="button"></button>
+      <button class="swatch" data-color="#e09a45" style="background:#e09a45" type="button"></button>
+      <button class="swatch" data-color="#4ea57a" style="background:#4ea57a" type="button"></button>
+      <button class="swatch" data-color="#3b82f6" style="background:#3b82f6" type="button"></button>
+      <button class="swatch" data-color="#f3efe6" style="background:#f3efe6" type="button"></button>
+      <input id="size" type="range" min="2" max="28" value="5" title="قەبارە" />
+      <div class="sep"></div>
+      <button class="tool" id="undoBtn" title="گەڕانەوە" type="button">
+        <svg viewBox="0 0 24 24"><path d="M8 8H4V4"/><path d="M4 8a8 8 0 1 1 2.3 5.7"/></svg>
+      </button>
+      <button class="tool" id="clearBtn" title="پاککردنەوە" type="button">
+        <svg viewBox="0 0 24 24"><path d="M5 7h14"/><path d="M9 7V5h6v2"/><path d="M8 7l1 12h6l1-12"/></svg>
+      </button>
+      <button class="tool" id="hideUi" title="شاردنەوەی تووڵبار" type="button">
+        <svg viewBox="0 0 24 24"><path d="M4 12s3.5-6 8-6 8 6 8 6-3.5 6-8 6-8-6-8-6z"/><circle cx="12" cy="12" r="2.5"/></svg>
+      </button>
+    </div>
+  </div>
+  <script>
+    const canvas = document.getElementById("board");
+    const ctx = canvas.getContext("2d");
+    const toolbar = document.getElementById("toolbar");
+    const hint = document.getElementById("hint");
+    const sizeEl = document.getElementById("size");
+
+    const state = {
+      tool: "pen",
+      color: "#ff4d4f",
+      size: 5,
+      strokes: [],
+      draft: null,
+      drawing: false,
+      dpr: 1,
+      toolbarHidden: false,
+      dashOffset: 0,
+    };
+
+    function send(cmd, data = {}) {
+      window.ipc.postMessage(JSON.stringify({ cmd, ...data }));
+    }
+
+    function showHint(msg) {
+      hint.textContent = msg;
+      hint.classList.add("show");
+      clearTimeout(showHint._t);
+      showHint._t = setTimeout(() => hint.classList.remove("show"), 1800);
+    }
+
+    function resize() {
+      state.dpr = window.devicePixelRatio || 1;
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      canvas.width = Math.max(1, Math.floor(w * state.dpr));
+      canvas.height = Math.max(1, Math.floor(h * state.dpr));
+      canvas.style.width = w + "px";
+      canvas.style.height = h + "px";
+      ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+      redraw();
+    }
+
+    function setTool(tool) {
+      state.tool = tool;
+      document.querySelectorAll(".tool[data-tool]").forEach((b) => {
+        b.classList.toggle("active", b.dataset.tool === tool);
+      });
+      const pass = tool === "pointer";
+      send("annotate_pass", { pass });
+      if (pass) {
+        showHint("ماوس — کلیک تێدەپەڕێت · Ctrl+Shift+D بۆ قەلەم");
+      } else if (tool === "magic") {
+        showHint("ماجیک سێلێکت — ناوچەیەک هەڵبژێرە");
+      } else if (tool === "select") {
+        showHint("سێلێکت — چوارگۆشە بکێشە");
+      } else if (tool === "pen") {
+        showHint("قەلەم ئامادەیە");
+      }
+    }
+
+    function setColor(color) {
+      state.color = color;
+      document.querySelectorAll(".swatch").forEach((b) => {
+        b.classList.toggle("active", b.dataset.color === color);
+      });
+    }
+
+    function pos(e) {
+      const r = canvas.getBoundingClientRect();
+      return { x: e.clientX - r.left, y: e.clientY - r.top };
+    }
+
+    function roundRectPath(c, x, y, w, h, rad) {
+      const r = Math.min(rad, Math.abs(w) / 2, Math.abs(h) / 2);
+      const x2 = x + w, y2 = y + h;
+      c.beginPath();
+      c.moveTo(x + r, y);
+      c.arcTo(x2, y, x2, y2, r);
+      c.arcTo(x2, y2, x, y2, r);
+      c.arcTo(x, y2, x, y, r);
+      c.arcTo(x, y, x2, y, r);
+      c.closePath();
+    }
+
+    function drawArrow(c, x1, y1, x2, y2, width) {
+      const ang = Math.atan2(y2 - y1, x2 - x1);
+      const head = Math.max(12, width * 3.2);
+      c.beginPath();
+      c.moveTo(x1, y1);
+      c.lineTo(x2, y2);
+      c.stroke();
+      c.beginPath();
+      c.moveTo(x2, y2);
+      c.lineTo(x2 - head * Math.cos(ang - 0.4), y2 - head * Math.sin(ang - 0.4));
+      c.lineTo(x2 - head * Math.cos(ang + 0.4), y2 - head * Math.sin(ang + 0.4));
+      c.closePath();
+      c.fill();
+    }
+
+    function viewSize() {
+      return {
+        w: canvas.width / state.dpr,
+        h: canvas.height / state.dpr,
+      };
+    }
+
+    function drawStroke(c, s, animDash) {
+      if (!s) return;
+      c.save();
+      if (s.type === "pen" || s.type === "high") {
+        c.strokeStyle = s.color;
+        c.globalAlpha = s.type === "high" ? 0.35 : 1;
+        c.lineWidth = s.size * (s.type === "high" ? 2.4 : 1);
+        c.lineCap = "round";
+        c.lineJoin = "round";
+        c.beginPath();
+        s.points.forEach((p, i) => (i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)));
+        c.stroke();
+      } else if (s.type === "arrow") {
+        c.strokeStyle = s.color;
+        c.fillStyle = s.color;
+        c.lineWidth = s.size;
+        c.lineCap = "round";
+        drawArrow(c, s.x1, s.y1, s.x2, s.y2, s.size);
+      } else if (s.type === "rect" || s.type === "ellipse") {
+        c.strokeStyle = s.color;
+        c.lineWidth = s.size;
+        c.lineCap = "round";
+        if (s.type === "rect") {
+          roundRectPath(c, s.x, s.y, s.w, s.h, 8);
+          c.stroke();
+        } else {
+          c.beginPath();
+          c.ellipse(s.x + s.w / 2, s.y + s.h / 2, Math.abs(s.w / 2), Math.abs(s.h / 2), 0, 0, Math.PI * 2);
+          c.stroke();
+        }
+      } else if (s.type === "select") {
+        c.strokeStyle = s.color;
+        c.lineWidth = Math.max(2, s.size * 0.7);
+        c.setLineDash([8, 6]);
+        if (animDash) c.lineDashOffset = -state.dashOffset;
+        roundRectPath(c, s.x, s.y, s.w, s.h, 6);
+        c.stroke();
+        c.setLineDash([]);
+      } else if (s.type === "magic") {
+        const pad = 14;
+        const x = Math.min(s.x, s.x + s.w) - pad;
+        const y = Math.min(s.y, s.y + s.h) - pad;
+        const w = Math.abs(s.w) + pad * 2;
+        const h = Math.abs(s.h) + pad * 2;
+        const vs = viewSize();
+        c.beginPath();
+        c.rect(0, 0, vs.w, vs.h);
+        roundRectPath(c, x, y, w, h, 18);
+        c.fillStyle = "rgba(0,0,0,0.4)";
+        c.fill("evenodd");
+        c.fillStyle = s.color + "22";
+        roundRectPath(c, x, y, w, h, 18);
+        c.fill();
+        c.strokeStyle = s.color;
+        c.lineWidth = Math.max(3, s.size);
+        c.shadowColor = s.color;
+        c.shadowBlur = 16;
+        c.setLineDash([10, 8]);
+        if (animDash) c.lineDashOffset = -state.dashOffset;
+        roundRectPath(c, x, y, w, h, 18);
+        c.stroke();
+        c.setLineDash([]);
+        c.shadowBlur = 0;
+      } else if (s.type === "eraser") {
+        c.globalCompositeOperation = "destination-out";
+        c.strokeStyle = "rgba(0,0,0,1)";
+        c.lineWidth = s.size * 2.5;
+        c.lineCap = "round";
+        c.lineJoin = "round";
+        c.beginPath();
+        s.points.forEach((p, i) => (i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)));
+        c.stroke();
+      }
+      c.restore();
+    }
+
+    function redraw() {
+      const w = canvas.width / state.dpr;
+      const h = canvas.height / state.dpr;
+      ctx.clearRect(0, 0, w, h);
+      // draw non-magic first, magic last so spotlight stacks reasonably
+      const normal = state.strokes.filter((s) => s.type !== "magic");
+      const magics = state.strokes.filter((s) => s.type === "magic");
+      normal.forEach((s) => drawStroke(ctx, s, true));
+      magics.forEach((s) => drawStroke(ctx, s, true));
+      if (state.draft) drawStroke(ctx, state.draft, true);
+    }
+
+    function startDraft(p) {
+      const t = state.tool;
+      if (t === "pointer") return;
+      state.drawing = true;
+      if (t === "pen" || t === "high" || t === "eraser") {
+        state.draft = { type: t, color: state.color, size: state.size, points: [p] };
+      } else {
+        state.draft = { type: t, color: state.color, size: state.size, x: p.x, y: p.y, w: 0, h: 0, x1: p.x, y1: p.y, x2: p.x, y2: p.y };
+      }
+    }
+
+    function updateDraft(p) {
+      if (!state.drawing || !state.draft) return;
+      const d = state.draft;
+      if (d.points) {
+        const last = d.points[d.points.length - 1];
+        if (Math.hypot(p.x - last.x, p.y - last.y) >= 1.2) d.points.push(p);
+      } else {
+        d.x2 = p.x;
+        d.y2 = p.y;
+        d.w = p.x - d.x;
+        d.h = p.y - d.y;
+      }
+      redraw();
+    }
+
+    function endDraft() {
+      if (!state.drawing) return;
+      state.drawing = false;
+      if (state.draft) {
+        const d = state.draft;
+        const ok = d.points
+          ? d.points.length > 1
+          : (Math.abs(d.w) > 4 || Math.abs(d.h) > 4 || Math.hypot((d.x2 || 0) - (d.x1 || 0), (d.y2 || 0) - (d.y1 || 0)) > 4);
+        if (ok) state.strokes.push(d);
+        state.draft = null;
+        redraw();
+      }
+    }
+
+    canvas.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0) return;
+      if (state.tool === "pointer") return;
+      canvas.setPointerCapture(e.pointerId);
+      startDraft(pos(e));
+    });
+    canvas.addEventListener("pointermove", (e) => updateDraft(pos(e)));
+    canvas.addEventListener("pointerup", endDraft);
+    canvas.addEventListener("pointercancel", endDraft);
+
+    document.querySelectorAll(".tool[data-tool]").forEach((btn) => {
+      btn.addEventListener("click", () => setTool(btn.dataset.tool));
+    });
+    document.querySelectorAll(".swatch").forEach((btn) => {
+      btn.addEventListener("click", () => setColor(btn.dataset.color));
+    });
+    sizeEl.addEventListener("input", () => { state.size = Number(sizeEl.value) || 5; });
+
+    document.getElementById("undoBtn").addEventListener("click", () => {
+      state.strokes.pop();
+      redraw();
+    });
+    document.getElementById("clearBtn").addEventListener("click", () => {
+      state.strokes = [];
+      state.draft = null;
+      redraw();
+    });
+    document.getElementById("hideUi").addEventListener("click", () => {
+      state.toolbarHidden = true;
+      toolbar.classList.add("hidden");
+      setTool("pointer");
+      showHint("تووڵبار شاردرا · Ctrl+Shift+D بۆ گەڕانەوە");
+    });
+
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        setTool("pointer");
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+        state.strokes.pop();
+        redraw();
+      }
+    });
+
+    function tick() {
+      state.dashOffset = (state.dashOffset + 0.8) % 36;
+      if (state.strokes.some((s) => s.type === "select" || s.type === "magic") || (state.draft && (state.draft.type === "select" || state.draft.type === "magic"))) {
+        redraw();
+      }
+      requestAnimationFrame(tick);
+    }
+
+    window.__annotateUpdate = (cfg) => {
+      if (cfg.clear) {
+        state.strokes = [];
+        state.draft = null;
+        redraw();
+      }
+      if (cfg.showToolbar) {
+        state.toolbarHidden = false;
+        toolbar.classList.remove("hidden");
+        if (state.tool === "pointer") setTool("pen");
+        else {
+          send("annotate_pass", { pass: false });
+          showHint("ئامرازەکان ئامادەن");
+        }
+      }
+      if (cfg.tool) setTool(cfg.tool);
+    };
+
+    window.addEventListener("resize", resize);
+    resize();
+    tick();
+    send("annotate_ready");
+    setTool("pen");
+  </script>
+</body>
+</html>
