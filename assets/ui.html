@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ckb" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ڕیل — سکرین ڕیکۆردەر</title>
+  <style>
+    @font-face {
+      font-family: "Rabar";
+      src: url("app://fonts/Rabar.ttf") format("truetype");
+      font-weight: 100 900;
+      font-display: swap;
+    }
+
+    :root {
+      --ink: #0e1218;
+      --panel: #181e28;
+      --edge: #2a3444;
+      --text: #ece8e0;
+      --muted: #9aa2ae;
+      --copper: #d48c4a;
+      --copper-dim: #9c6030;
+      --danger: #d64848;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: radial-gradient(120% 80% at 50% -10%, #243044 0%, var(--ink) 55%);
+      color: var(--text);
+      font-family: "Rabar", sans-serif;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 28px 22px 20px;
+    }
+
+    .brand {
+      text-align: center;
+      animation: rise 0.55s ease both;
+    }
+
+    .brand h1 {
+      font-size: 42px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      line-height: 1;
+    }
+
+    .brand .sub {
+      margin-top: 6px;
+      color: var(--copper);
+      font-size: 16px;
+    }
+
+    .brand .tag {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .accent {
+      width: 56px;
+      height: 3px;
+      margin: 12px auto 0;
+      border-radius: 2px;
+      background: var(--copper-dim);
+    }
+
+    .timer {
+      margin-top: 22px;
+      text-align: center;
+      animation: rise 0.65s ease both;
+    }
+
+    .timer .clock {
+      font-size: 52px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.04em;
+      direction: ltr;
+      unicode-bidi: isolate;
+    }
+
+    .timer .meta {
+      margin-top: 6px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .timer .meta.live { color: var(--danger); }
+
+    .rec-wrap {
+      margin-top: 22px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      animation: rise 0.75s ease both;
+    }
+
+    .rec-btn {
+      width: 96px;
+      height: 96px;
+      border: none;
+      border-radius: 50%;
+      background: transparent;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .rec-btn::before {
+      content: "";
+      position: absolute;
+      inset: 2px;
+      border-radius: 50%;
+      background: rgba(212, 140, 74, 0.18);
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+
+    .rec-btn.recording::before {
+      background: rgba(214, 72, 72, 0.22);
+    }
+
+    .rec-btn .ring {
+      position: absolute;
+      inset: 8px;
+      border-radius: 50%;
+      border: 2px solid var(--copper);
+    }
+
+    .rec-btn.recording .ring { border-color: var(--danger); }
+
+    .rec-btn .core {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 44px;
+      height: 44px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background: var(--copper);
+      transition: border-radius 0.2s, background 0.2s, width 0.2s, height 0.2s;
+    }
+
+    .rec-btn.recording .core {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background: var(--danger);
+    }
+
+    .rec-label {
+      font-size: 13px;
+      color: var(--copper);
+      letter-spacing: 0.02em;
+    }
+
+    .rec-btn.recording + .rec-label,
+    .rec-btn.saving + .rec-label { color: var(--danger); }
+
+    .card {
+      width: min(360px, 100%);
+      margin-top: 26px;
+      background: var(--panel);
+      border: 1px solid var(--edge);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.35);
+      animation: rise 0.85s ease both;
+    }
+
+    .section {
+      color: var(--copper);
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+
+    select {
+      width: 100%;
+      appearance: none;
+      background: #202834;
+      color: var(--text);
+      border: 1px solid var(--edge);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font: inherit;
+      font-size: 14px;
+      outline: none;
+    }
+
+    select:disabled { opacity: 0.55; }
+
+    .check {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 14px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .check input {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--copper);
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid var(--edge);
+      margin: 14px 0;
+    }
+
+    .status {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+      min-height: 1.6em;
+    }
+
+    .error {
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--danger);
+      line-height: 1.5;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .pill {
+      border: 1px solid var(--copper);
+      background: var(--copper-dim);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 8px 14px;
+      font: inherit;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .pill.secondary {
+      background: var(--edge);
+      border-color: var(--edge);
+    }
+
+    .path {
+      margin-top: 8px;
+      font-size: 11px;
+      color: #6e7682;
+      word-break: break-all;
+      direction: ltr;
+      text-align: right;
+      unicode-bidi: isolate;
+    }
+
+    .footer {
+      margin-top: auto;
+      padding-top: 18px;
+      font-size: 11px;
+      color: #58606c;
+      text-align: center;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 0.75; }
+      50% { transform: scale(1.08); opacity: 1; }
+    }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <header class="brand">
+    <h1>ڕیل</h1>
+    <div class="sub">سکرین ڕیکۆردەر</div>
+    <div class="tag">تۆمارکردنی شاشە بە شێوەیەکی پیشەیی</div>
+    <div class="accent"></div>
+  </header>
+
+  <section class="timer">
+    <div class="clock" id="clock">00:00:00</div>
+    <div class="meta" id="meta">ئامادەیە · MP4 · کۆدکردنی ڕەقەکاڵا</div>
+  </section>
+
+  <div class="rec-wrap">
+    <button class="rec-btn" id="recBtn" type="button" aria-label="دەستپێکردنی تۆمار">
+      <span class="ring"></span>
+      <span class="core"></span>
+    </button>
+    <div class="rec-label" id="recLabel">دەستپێکردنی تۆمار</div>
+  </div>
+
+  <section class="card">
+    <div class="section">شاشە</div>
+    <select id="monitor"></select>
+
+    <label class="check">
+      <input type="checkbox" id="cursor" checked />
+      <span>نیشاندانی ماوس لە ڤیدیۆدا</span>
+    </label>
+
+    <hr />
+
+    <div class="status" id="status">ئامادەیە بۆ تۆمارکردنی شاشەکەت</div>
+    <div class="error" id="error" hidden></div>
+
+    <div class="actions" id="actions" hidden>
+      <button class="pill" id="openFile" type="button">کردنەوەی فایل</button>
+      <button class="pill secondary" id="openFolder" type="button">کردنەوەی فۆڵدەر</button>
+    </div>
+    <div class="path" id="path" hidden></div>
+  </section>
+
+  <footer class="footer">گرتنی گرافیکسی ویندۆز · H.264 MP4</footer>
+
+  <script>
+    const state = {
+      recording: false,
+      saving: false,
+      lastPath: null,
+    };
+
+    function send(cmd, data = {}) {
+      window.ipc.postMessage(JSON.stringify({ cmd, ...data }));
+    }
+
+    function fmtTime(secs) {
+      const h = String(Math.floor(secs / 3600)).padStart(2, "0");
+      const m = String(Math.floor((secs % 3600) / 60)).padStart(2, "0");
+      const s = String(secs % 60).padStart(2, "0");
+      return `${h}:${m}:${s}`;
+    }
+
+    function setUi(payload) {
+      if (payload.monitors) {
+        const sel = document.getElementById("monitor");
+        const current = sel.value;
+        sel.innerHTML = "";
+        payload.monitors.forEach((m, i) => {
+          const opt = document.createElement("option");
+          opt.value = String(i);
+          opt.textContent = m;
+          sel.appendChild(opt);
+        });
+        if (current) sel.value = current;
+        else if (payload.selected != null) sel.value = String(payload.selected);
+      }
+
+      if (payload.elapsed != null) {
+        document.getElementById("clock").textContent = fmtTime(payload.elapsed);
+      }
+
+      if (payload.frames != null || payload.recording != null) {
+        const meta = document.getElementById("meta");
+        if (payload.recording) {
+          meta.textContent = `● ڕاستەوخۆ   ${payload.frames || 0} چوارچێوە`;
+          meta.classList.add("live");
+        } else if (!state.saving) {
+          meta.textContent = "ئامادەیە · MP4 · کۆدکردنی ڕەقەکاڵا";
+          meta.classList.remove("live");
+        }
+      }
+
+      if (payload.status != null) {
+        document.getElementById("status").textContent = payload.status;
+      }
+
+      if (payload.error != null) {
+        const el = document.getElementById("error");
+        if (payload.error) {
+          el.hidden = false;
+          el.textContent = payload.error;
+        } else {
+          el.hidden = true;
+          el.textContent = "";
+        }
+      }
+
+      if (payload.lastPath != null) {
+        state.lastPath = payload.lastPath;
+        const actions = document.getElementById("actions");
+        const path = document.getElementById("path");
+        if (payload.lastPath) {
+          actions.hidden = false;
+          path.hidden = false;
+          path.textContent = payload.lastPath;
+        }
+      }
+
+      if (payload.recording != null) state.recording = payload.recording;
+      if (payload.saving != null) state.saving = payload.saving;
+
+      const btn = document.getElementById("recBtn");
+      const label = document.getElementById("recLabel");
+      const monitor = document.getElementById("monitor");
+      const cursor = document.getElementById("cursor");
+
+      btn.classList.toggle("recording", state.recording);
+      btn.classList.toggle("saving", state.saving);
+      monitor.disabled = state.recording || state.saving;
+      cursor.disabled = state.recording || state.saving;
+
+      if (state.saving) label.textContent = "خەریکی پاشەکەوتکردن…";
+      else if (state.recording) label.textContent = "وەستاندنی تۆمار";
+      else label.textContent = "دەستپێکردنی تۆمار";
+    }
+
+    // Called from Rust
+    window.__reelUpdate = setUi;
+
+    document.getElementById("recBtn").addEventListener("click", () => {
+      if (state.saving) return;
+      if (state.recording) {
+        send("stop");
+      } else {
+        send("start", {
+          monitor: Number(document.getElementById("monitor").value || 0),
+          cursor: document.getElementById("cursor").checked,
+        });
+      }
+    });
+
+    document.getElementById("openFile").addEventListener("click", () => send("open_file"));
+    document.getElementById("openFolder").addEventListener("click", () => send("open_folder"));
+
+    send("ready");
+    setInterval(() => send("tick"), 200);
+  </script>
+</body>
+</html>
