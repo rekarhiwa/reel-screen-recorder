@@ -11,579 +11,262 @@
       font-weight: 100 900;
       font-display: swap;
     }
-
     :root {
-      --bg: #101318;
-      --bg-2: #171c23;
-      --line: rgba(243, 239, 230, 0.08);
-      --line-strong: rgba(224, 154, 69, 0.45);
-      --text: #f3efe6;
-      --mute: #9aa3af;
-      --amber: #e09a45;
-      --amber-deep: #b56e28;
-      --danger: #e25555;
-      --ok: #4ea57a;
-      --radius: 18px;
+      --bg: #0e1319;
+      --panel: #151c25;
+      --fog: rgba(255,255,255,0.07);
+      --text: #f2f5f8;
+      --mute: #8a96a5;
+      --teal: #3dd6c6;
+      --teal-dim: rgba(61,214,198,0.14);
+      --rec: #ff3b4e;
+      --rec-glow: rgba(255,59,78,0.28);
+      --warn: #f5b942;
+      --ok: #3ecf8e;
       --font: "Rabar", "Segoe UI", sans-serif;
+      --amber: var(--teal);
+      --amber-deep: #2bb8a9;
+      --danger: var(--rec);
+      --line: var(--fog);
+      --line-strong: rgba(61,214,198,0.4);
+      --accent: var(--teal);
+      --accent-deep: #2bb8a9;
     }
-
     * { box-sizing: border-box; margin: 0; padding: 0; }
-
     html, body {
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      color: var(--text);
-      font-family: var(--font);
-      user-select: none;
+      width: 100%; height: 100%; overflow: hidden;
+      color: var(--text); font-family: var(--font); user-select: none;
       background:
-        radial-gradient(120% 70% at 100% 0%, rgba(224,154,69,0.16), transparent 42%),
-        radial-gradient(90% 55% at 0% 100%, rgba(78,165,122,0.08), transparent 40%),
-        linear-gradient(165deg, #1a2028 0%, var(--bg) 48%, #0c0f13 100%);
+        radial-gradient(100% 70% at 50% -10%, rgba(61,214,198,0.16), transparent 55%),
+        radial-gradient(80% 50% at 100% 100%, rgba(255,59,78,0.1), transparent 50%),
+        linear-gradient(180deg, #141b24 0%, var(--bg) 55%, #0a0e13 100%);
     }
-
     body::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      opacity: 0.035;
+      content: ""; position: fixed; inset: 0; pointer-events: none; opacity: 0.035; z-index: 0;
       background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-      z-index: 0;
     }
-
     .app {
-      position: relative;
-      z-index: 1;
-      height: 100%;
-      display: grid;
-      grid-template-rows: auto auto auto 1fr auto;
-      gap: 6px;
-      padding: 12px 14px 10px;
+      position: relative; z-index: 1; height: 100%;
+      display: grid; grid-template-rows: auto auto 1fr;
+      gap: 0; padding: 0;
     }
 
-    /* —— top —— */
     .topbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      animation: rise 0.45s ease both;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px 8px; gap: 10px;
     }
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      min-width: 0;
-    }
+    .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
     .mark {
-      width: 40px;
-      height: 40px;
-      flex-shrink: 0;
-      filter: drop-shadow(0 6px 14px rgba(224,154,69,0.28));
+      width: 36px; height: 36px; border-radius: 11px;
+      background: linear-gradient(145deg, rgba(61,214,198,0.2), rgba(255,59,78,0.12));
+      display: grid; place-items: center;
     }
-    .mark svg { width: 100%; height: 100%; display: block; }
-    .brand-text { min-width: 0; }
-    .brand-text h1 {
-      font-size: 22px;
-      font-weight: 800;
-      letter-spacing: 0.02em;
-      line-height: 1;
-    }
-    .brand-text p {
-      margin-top: 3px;
-      font-size: 11px;
-      color: var(--amber);
-    }
+    .mark svg { width: 22px; height: 22px; display: block; }
+    .brand-text h1 { font-size: 20px; font-weight: 900; line-height: 1; letter-spacing: -0.02em; }
+    .brand-text p { margin-top: 3px; font-size: 10px; color: var(--mute); }
     .state-pill {
-      flex-shrink: 0;
-      font-size: 11px;
-      color: var(--mute);
-      border: 1px solid var(--line);
-      background: rgba(23,28,35,0.75);
-      padding: 7px 11px;
-      border-radius: 999px;
-      max-width: 46%;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      transition: border-color .2s, color .2s, background .2s;
+      font-size: 11px; color: var(--mute); padding: 6px 10px; border-radius: 999px;
+      border: 1px solid var(--fog); background: rgba(0,0,0,0.22);
+      max-width: 42%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      transition: .2s ease;
     }
-    .state-pill.live {
-      color: #fff;
-      border-color: rgba(226,85,85,0.55);
-      background: rgba(226,85,85,0.18);
-    }
-    .state-pill.pause {
-      color: var(--amber);
-      border-color: var(--line-strong);
-      background: rgba(181,110,40,0.2);
-    }
+    .state-pill.live { color: #fff; border-color: rgba(255,59,78,0.5); background: rgba(255,59,78,0.18); }
+    .state-pill.pause { color: var(--warn); border-color: rgba(245,185,66,0.4); background: rgba(245,185,66,0.12); }
 
-    /* —— stage / timer —— */
-    .stage {
-      text-align: center;
-      padding: 2px 0 0;
-      animation: rise 0.55s ease both;
+    .hero {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 6px 16px 14px; gap: 8px;
+      border-bottom: 1px solid var(--fog);
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
     }
     .clock {
-      font-size: 36px;
-      font-weight: 800;
-      letter-spacing: 0.06em;
-      font-variant-numeric: tabular-nums;
-      direction: ltr;
-      unicode-bidi: isolate;
+      font-size: 34px; font-weight: 800; letter-spacing: 0.08em;
+      font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate;
       line-height: 1;
-      text-shadow: 0 10px 30px rgba(0,0,0,0.35);
     }
     .meta {
-      margin-top: 4px;
-      font-size: 11px;
-      color: var(--mute);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      font-size: 11px; color: var(--mute); text-align: center;
+      max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    .meta.live { color: var(--danger); }
-    .meta.pause { color: var(--amber); }
-
-    /* —— dock —— */
+    .meta.live { color: var(--rec); }
+    .meta.pause { color: var(--warn); }
     .dock {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      animation: rise 0.65s ease both;
+      display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 4px;
     }
     .side-btn {
-      width: 40px;
-      height: 40px;
-      border-radius: 12px;
-      border: 1px solid var(--line);
-      background: rgba(23,28,35,0.9);
-      color: var(--text);
-      font: inherit;
-      font-size: 11px;
-      cursor: pointer;
-      transition: transform .15s, border-color .2s, background .2s, opacity .2s;
+      width: 44px; height: 44px; border-radius: 14px;
+      border: 1px solid var(--fog); background: rgba(0,0,0,0.28);
+      color: var(--text); font: inherit; font-size: 11px; cursor: pointer;
+      transition: .15s ease;
     }
-    .side-btn:hover:not(:disabled) { border-color: var(--line-strong); transform: translateY(-1px); }
-    .side-btn:disabled { opacity: 0.32; cursor: default; }
-    .side-btn.on {
-      border-color: var(--line-strong);
-      background: rgba(181,110,40,0.28);
-      color: var(--amber);
-    }
-
+    .side-btn:hover:not(:disabled) { border-color: rgba(61,214,198,0.35); transform: translateY(-1px); }
+    .side-btn:disabled { opacity: 0.3; cursor: default; }
+    .side-btn.on { border-color: rgba(245,185,66,0.45); color: var(--warn); background: rgba(245,185,66,0.12); }
     .rec-btn {
-      width: 68px;
-      height: 68px;
-      border: none;
-      border-radius: 50%;
-      background: transparent;
-      position: relative;
-      cursor: pointer;
+      width: 72px; height: 72px; border: none; border-radius: 50%;
+      background: transparent; position: relative; cursor: pointer;
     }
     .rec-btn::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      border-radius: 50%;
-      background: rgba(224,154,69,0.14);
-      animation: pulse 2s ease-in-out infinite;
+      content: ""; position: absolute; inset: -2px; border-radius: 50%;
+      background: var(--rec-glow); animation: pulse 2s ease-in-out infinite;
     }
-    .rec-btn.recording::before { background: rgba(226,85,85,0.18); }
-    .rec-btn.paused::before { animation: none; background: rgba(224,154,69,0.2); }
+    .rec-btn.recording::before { background: rgba(255,59,78,0.35); }
+    .rec-btn.paused::before { animation: none; background: rgba(245,185,66,0.2); }
     .rec-btn .ring {
-      position: absolute;
-      inset: 6px;
-      border-radius: 50%;
-      border: 2px solid var(--amber);
-      box-shadow: inset 0 0 0 1px rgba(243,239,230,0.06);
+      position: absolute; inset: 6px; border-radius: 50%;
+      border: 2.5px solid rgba(255,255,255,0.28);
     }
-    .rec-btn.recording .ring { border-color: var(--danger); }
-    .rec-btn.paused .ring { border-style: dashed; border-color: var(--amber); }
+    .rec-btn.recording .ring { border-color: var(--rec); }
+    .rec-btn.paused .ring { border-style: dashed; border-color: var(--warn); }
     .rec-btn .core {
-      position: absolute;
-      top: 50%; left: 50%;
-      width: 28px; height: 28px;
-      transform: translate(-50%, -50%);
-      border-radius: 50%;
-      background: linear-gradient(160deg, #f0b56a, var(--amber-deep));
-      transition: width .2s, height .2s, border-radius .2s, background .2s;
-      box-shadow: 0 8px 18px rgba(181,110,40,0.35);
+      position: absolute; top: 50%; left: 50%; width: 28px; height: 28px;
+      transform: translate(-50%,-50%); border-radius: 50%;
+      background: linear-gradient(160deg, #ff6574, #c9182b);
+      box-shadow: 0 10px 24px rgba(201,24,43,0.45);
+      transition: .2s ease;
     }
-    .rec-btn.recording .core {
-      width: 20px; height: 20px;
-      border-radius: 5px;
-      background: linear-gradient(160deg, #f07878, #c43d3d);
-      box-shadow: 0 8px 18px rgba(226,85,85,0.35);
-    }
-    .rec-caption {
-      grid-column: 1 / -1;
-      text-align: center;
-      font-size: 11px;
-      color: var(--amber);
-      margin-top: -2px;
-    }
-    .dock-wrap {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-    }
+    .rec-btn.recording .core { width: 22px; height: 22px; border-radius: 6px; }
+    .rec-caption { font-size: 12px; color: var(--teal); margin-top: 2px; }
 
-    /* —— sheet —— */
     .sheet {
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      background: linear-gradient(180deg, rgba(28,33,41,0.92), rgba(18,22,28,0.96));
-      box-shadow: 0 18px 40px rgba(0,0,0,0.28);
-      overflow: hidden;
-      animation: rise 0.75s ease both;
+      min-height: 0; overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    .frame {
+      flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
+      padding: 10px 14px 14px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(61,214,198,0.35) transparent;
+    }
+    .block {
+      padding: 12px 0;
+      border-bottom: 1px solid var(--fog);
+    }
+    .block:last-of-type { border-bottom: none; }
+    .block-title {
+      font-size: 11px; font-weight: 800; letter-spacing: 0.06em;
+      color: var(--mute); margin-bottom: 8px;
     }
 
-    .panel {
-      display: none;
-      flex-direction: column;
-      gap: 0;
-      padding: 10px 11px 8px;
-      min-height: 0;
-      overflow-x: hidden;
-      overflow-y: auto;
-      flex: 1;
-      animation: panelIn .28s ease both;
-      scrollbar-width: thin;
-      scrollbar-color: rgba(224,154,69,0.35) transparent;
+    .field { margin-top: 8px; }
+    .field:first-child { margin-top: 0; }
+    .label {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 5px; font-size: 11px; color: var(--teal);
     }
-    .panel.active { display: flex; }
-    #panel-cam {
-      gap: 2px;
+    .label span { color: var(--mute); font-size: 10px; }
+    select, input[type="text"] {
+      width: 100%; appearance: none;
+      border: 1px solid var(--fog); background: rgba(0,0,0,0.28);
+      color: var(--text); border-radius: 12px; padding: 9px 11px;
+      font: inherit; font-size: 12px; outline: none;
     }
-    .section-label {
-      margin-top: 10px;
-      margin-bottom: 2px;
-      font-size: 10px;
-      letter-spacing: 0.04em;
-      color: var(--mute);
-      text-transform: none;
+    select:focus, input[type="text"]:focus {
+      border-color: rgba(61,214,198,0.45);
+      box-shadow: 0 0 0 3px rgba(61,214,198,0.1);
     }
-    .color-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-top: 4px;
+    select:disabled, input:disabled { opacity: 0.45; }
+    input[type="range"] { width: 100%; accent-color: var(--teal); margin-top: 2px; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+
+    .switch-row {
+      display: flex; align-items: center; gap: 10px; margin-top: 7px;
+      padding: 9px 11px; border-radius: 12px;
+      background: rgba(0,0,0,0.22); font-size: 12px; cursor: pointer;
+      border: 1px solid transparent;
     }
-    .swatches {
-      display: flex;
-      gap: 6px;
-      flex: 1;
-    }
+    .switch-row.on { border-color: rgba(61,214,198,0.28); background: var(--teal-dim); }
+    .switch-row input { width: 16px; height: 16px; accent-color: var(--teal); }
+
+    #dualBlock { display: none; }
+    #dualBlock.show { display: block; }
+    .hint { margin-top: 5px; font-size: 10px; color: #6d7a8a; line-height: 1.4; }
+    .section-label { margin-top: 10px; margin-bottom: 2px; font-size: 10px; color: var(--mute); }
+
+    .color-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+    .swatches { display: flex; gap: 6px; flex: 1; }
     .swatch {
-      width: 26px;
-      height: 26px;
-      border-radius: 50%;
-      border: 2px solid rgba(255,255,255,0.12);
-      cursor: pointer;
-      padding: 0;
-      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25);
-      transition: transform .15s, border-color .15s;
+      width: 24px; height: 24px; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.12); cursor: pointer; padding: 0;
     }
-    .swatch:hover { transform: scale(1.08); }
-    .swatch.active {
-      border-color: var(--amber);
-      box-shadow: 0 0 0 2px rgba(224,154,69,0.25);
-    }
+    .swatch.active { border-color: var(--teal); box-shadow: 0 0 0 2px rgba(61,214,198,0.2); }
     .color-pick {
-      width: 34px;
-      height: 28px;
-      padding: 0;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: transparent;
-      cursor: pointer;
+      width: 32px; height: 26px; padding: 0; border: 1px solid var(--fog);
+      border-radius: 8px; background: transparent; cursor: pointer;
     }
     .color-pick::-webkit-color-swatch-wrapper { padding: 2px; }
     .color-pick::-webkit-color-swatch { border: none; border-radius: 5px; }
     .details-box {
-      margin-top: 8px;
-      padding: 8px 10px 10px;
-      border-radius: 14px;
-      border: 1px solid var(--line);
-      background: rgba(10,12,16,0.35);
+      margin-top: 8px; padding: 8px 10px 10px; border-radius: 12px;
+      border: 1px dashed var(--fog); background: rgba(0,0,0,0.18);
     }
     .details-box .field { margin-top: 7px; }
     .details-box .field:first-child { margin-top: 0; }
 
-    /* —— modern bottom icon dock —— */
-    .bottom-nav {
-      animation: rise 0.85s ease both;
+    .btn-block {
+      margin-top: 9px; width: 100%; border: 1px solid rgba(61,214,198,0.35);
+      background: linear-gradient(160deg, rgba(61,214,198,0.22), rgba(43,184,169,0.16));
+      color: var(--text); border-radius: 12px; padding: 10px;
+      font: inherit; font-size: 12px; cursor: pointer;
     }
-    .nav-track {
-      position: relative;
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 4px;
-      padding: 6px;
-      border-radius: 20px;
-      border: 1px solid rgba(243,239,230,0.1);
-      background: rgba(14,17,22,0.72);
-      backdrop-filter: blur(14px);
-      box-shadow:
-        0 10px 28px rgba(0,0,0,0.28),
-        inset 0 1px 0 rgba(255,255,255,0.04);
-    }
-    .nav-thumb {
-      position: absolute;
-      top: 6px;
-      bottom: 6px;
-      right: 6px;
-      left: auto;
-      width: calc((100% - 12px - 8px) / 3);
-      border-radius: 15px;
-      background: linear-gradient(160deg, rgba(224,154,69,0.28), rgba(181,110,40,0.22));
-      box-shadow: inset 0 0 0 1px rgba(224,154,69,0.35);
-      transition: transform .28s cubic-bezier(.22,.9,.3,1);
-      pointer-events: none;
-      z-index: 0;
-    }
-    /* RTL dock: index 0 is rightmost; negative X moves toward the left */
-    .nav-thumb[data-i="0"] { transform: translateX(0); }
-    .nav-thumb[data-i="1"] { transform: translateX(calc(-1 * (100% + 4px))); }
-    .nav-thumb[data-i="2"] { transform: translateX(calc(-2 * (100% + 4px))); }
+    .btn-block.ghost { background: rgba(255,255,255,0.04); border-color: var(--fog); }
 
-    .tab {
-      position: relative;
-      z-index: 1;
-      border: none;
-      background: transparent;
-      color: var(--mute);
-      font: inherit;
-      cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 3px;
-      padding: 8px 4px 7px;
-      border-radius: 15px;
-      transition: color .2s, transform .15s;
+    .hk-row {
+      display: grid; grid-template-columns: 1fr auto auto; gap: 6px;
+      align-items: center; margin-top: 8px;
     }
-    .tab svg {
-      width: 20px;
-      height: 20px;
-      stroke: currentColor;
-      fill: none;
-      stroke-width: 1.8;
-      stroke-linecap: round;
-      stroke-linejoin: round;
+    .hk-row:first-of-type { margin-top: 0; }
+    .hk-row .label { grid-column: 1 / -1; margin-bottom: 0; }
+    .hk-row input[type="text"] { min-width: 0; }
+    .hk-row.listening input { border-color: rgba(61,214,198,0.5); color: var(--teal); background: rgba(61,214,198,0.08); }
+    .hk-row.empty input { color: var(--mute); font-style: italic; }
+    .hk-btn {
+      width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--fog);
+      background: rgba(0,0,0,0.25); color: var(--mute); font: inherit; font-size: 13px;
+      cursor: pointer; display: grid; place-items: center; padding: 0;
     }
-    .tab span {
-      font-size: 10px;
-      letter-spacing: 0.01em;
-    }
-    .tab:hover { color: var(--text); }
-    .tab.active {
-      color: var(--amber);
-    }
-    .tab:active { transform: scale(0.96); }
+    .hk-btn:hover { color: var(--text); border-color: rgba(61,214,198,0.35); }
+    .hk-btn.danger:hover { color: var(--rec); border-color: rgba(255,59,78,0.45); background: rgba(255,59,78,0.1); }
+    .hk-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+    .hk-actions .btn-block { margin-top: 0; }
 
-    @keyframes panelIn {
-      from { opacity: 0; transform: translateY(6px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .field { margin-top: 9px; }
-    .field:first-child { margin-top: 0; }
-    .label {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      margin-bottom: 5px;
-      font-size: 11px;
-      color: var(--amber);
-    }
-    .label span { color: var(--mute); font-size: 10px; }
-
-    select, input[type="text"] {
-      width: 100%;
-      appearance: none;
-      border: 1px solid var(--line);
-      background: rgba(12,15,19,0.55);
-      color: var(--text);
-      border-radius: 12px;
-      padding: 9px 11px;
-      font: inherit;
-      font-size: 12px;
-      outline: none;
-      transition: border-color .2s, background .2s;
-    }
-    select:focus, input[type="text"]:focus {
-      border-color: var(--line-strong);
-      background: rgba(12,15,19,0.8);
-    }
-    select:disabled, input:disabled { opacity: 0.45; }
-    input[type="range"] {
-      width: 100%;
-      accent-color: var(--amber);
-      margin-top: 2px;
-    }
-
-    .grid2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-top: 9px;
-    }
-
-    .switch-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-top: 9px;
-      padding: 9px 11px;
-      border-radius: 12px;
-      border: 1px solid var(--line);
-      background: rgba(12,15,19,0.35);
-      font-size: 12px;
-      cursor: pointer;
-      transition: border-color .2s, background .2s;
-    }
-    .switch-row.on {
-      border-color: var(--line-strong);
-      background: rgba(181,110,40,0.14);
-    }
-    .switch-row input {
-      width: 16px;
-      height: 16px;
-      accent-color: var(--amber);
-    }
-
-    #dualBlock { display: none; }
-    #dualBlock.show { display: block; }
-
-    .hint {
-      margin-top: 5px;
-      font-size: 10px;
-      color: #7f8793;
-      line-height: 1.45;
-    }
-
-    .footer-status {
-      margin-top: auto;
-      padding-top: 10px;
-      border-top: 1px solid var(--line);
-    }
+    .footer-status { margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--fog); }
     .status {
-      font-size: 11px;
-      color: var(--mute);
-      line-height: 1.45;
-      min-height: 1.45em;
-      overflow: hidden;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
+      font-size: 11px; color: var(--mute); line-height: 1.4;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
     }
-    .error {
-      margin-top: 5px;
-      font-size: 11px;
-      color: var(--danger);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .actions {
-      display: flex;
-      gap: 7px;
-      margin-top: 8px;
-    }
+    .error { margin-top: 4px; font-size: 11px; color: var(--rec); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .actions { display: flex; gap: 7px; margin-top: 8px; }
     .pill {
-      border: 1px solid var(--line-strong);
-      background: rgba(181,110,40,0.3);
-      color: var(--text);
-      border-radius: 999px;
-      padding: 6px 12px;
-      font: inherit;
-      font-size: 11px;
-      cursor: pointer;
+      border: 1px solid rgba(61,214,198,0.35); background: rgba(61,214,198,0.12);
+      color: var(--text); border-radius: 999px; padding: 6px 12px;
+      font: inherit; font-size: 11px; cursor: pointer;
     }
-    .pill.secondary {
-      background: rgba(243,239,230,0.06);
-      border-color: var(--line);
-    }
+    .pill.secondary { background: rgba(255,255,255,0.04); border-color: var(--fog); }
     .path, .paths .path {
-      margin-top: 4px;
-      font-size: 10px;
-      color: #6f7682;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      direction: ltr;
-      text-align: right;
+      margin-top: 4px; font-size: 10px; color: #667788;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      direction: ltr; text-align: right;
     }
     .paths { display: none; flex-direction: column; gap: 2px; margin-top: 4px; }
     .paths.show { display: flex; }
 
-    .btn-block {
-      margin-top: 10px;
-      width: 100%;
-      border: 1px solid var(--line-strong);
-      background: linear-gradient(160deg, rgba(224,154,69,0.28), rgba(181,110,40,0.35));
-      color: var(--text);
-      border-radius: 12px;
-      padding: 10px;
-      font: inherit;
-      font-size: 12px;
-      cursor: pointer;
-    }
-    .btn-block.ghost {
-      background: rgba(243,239,230,0.05);
-      border-color: var(--line);
-    }
-
     #toasts {
-      position: fixed;
-      top: 12px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 40;
-      width: min(340px, 90%);
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
+      position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+      z-index: 40; width: min(320px, 90%); display: flex; flex-direction: column; gap: 6px;
       pointer-events: none;
     }
     .toast {
-      background: rgba(23,28,35,0.96);
-      border: 1px solid var(--line-strong);
-      color: var(--text);
-      border-radius: 14px;
-      padding: 10px 12px;
-      font-size: 12px;
-      text-align: center;
-      box-shadow: 0 14px 30px rgba(0,0,0,0.35);
-      animation: toastIn .28s ease both;
+      background: rgba(16,22,30,0.96); border: 1px solid rgba(61,214,198,0.35);
+      color: var(--text); border-radius: 12px; padding: 9px 11px; font-size: 12px;
+      text-align: center; box-shadow: 0 12px 28px rgba(0,0,0,0.4);
+      animation: toastIn .25s ease both;
     }
-    .toast.error { border-color: rgba(226,85,85,0.6); }
-
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); opacity: 0.7; }
-      50% { transform: scale(1.07); opacity: 1; }
-    }
-    @keyframes rise {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes toastIn {
-      from { opacity: 0; transform: translateY(-8px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    /* hidden legacy chip ids kept for JS updates */
+    .toast.error { border-color: rgba(255,59,78,0.55); }
+    @keyframes pulse { 0%,100% { transform: scale(1); opacity: .65; } 50% { transform: scale(1.08); opacity: 1; } }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
     #chipMode, #chipCodec, #chipLive { display: none; }
+    .panel, .dock-wrap, .stage, .control-band { display: contents; }
   </style>
 </head>
 <body>
@@ -597,23 +280,10 @@
       <div class="brand">
         <div class="mark" aria-hidden="true">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
-            <defs>
-              <linearGradient id="bezel" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#e8a862"/>
-                <stop offset="100%" stop-color="#b56e28"/>
-              </linearGradient>
-              <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#3a4658"/>
-                <stop offset="100%" stop-color="#151b24"/>
-              </linearGradient>
-            </defs>
-            <rect x="14" y="16" width="68" height="48" rx="8" fill="url(#bezel)"/>
-            <rect x="20" y="22" width="56" height="34" rx="5" fill="url(#glass)"/>
-            <rect x="22" y="24" width="52" height="10" rx="3" fill="#4a586c" opacity="0.5"/>
-            <circle cx="68" cy="30" r="3.5" fill="#e24b4b"/>
-            <rect x="44" y="64" width="8" height="10" rx="2" fill="#d48c4a"/>
-            <rect x="28" y="78.5" width="40" height="5.5" rx="2.5" fill="#e8a862"/>
-            <rect x="28" y="81" width="40" height="4" rx="2" fill="#9c6030"/>
+            <rect x="18" y="22" width="60" height="40" rx="10" fill="none" stroke="#3dd6c6" stroke-width="4"/>
+            <circle cx="66" cy="34" r="5" fill="#ff3b4e"/>
+            <path d="M34 74h28" stroke="#3dd6c6" stroke-width="4" stroke-linecap="round"/>
+            <path d="M48 62v12" stroke="#3dd6c6" stroke-width="4" stroke-linecap="round"/>
           </svg>
         </div>
         <div class="brand-text">
@@ -624,12 +294,9 @@
       <div class="state-pill" id="statePill">ئامادە</div>
     </header>
 
-    <section class="stage">
+    <section class="hero">
       <div class="clock" id="clock">00:00:00</div>
       <div class="meta" id="meta">ئامادەیە بۆ تۆمار</div>
-    </section>
-
-    <div class="dock-wrap">
       <div class="dock">
         <button class="side-btn" id="pauseBtn" type="button" disabled title="پۆز">پۆز</button>
         <button class="rec-btn" id="recBtn" type="button" aria-label="تۆمار">
@@ -639,64 +306,175 @@
         <button class="side-btn" id="stopHint" type="button" disabled title="وەستان">■</button>
       </div>
       <div class="rec-caption" id="recLabel">دەستپێکردنی تۆمار</div>
-    </div>
+    </section>
 
     <section class="sheet">
-      <div class="panel active" id="panel-rec">
-        <label class="switch-row" id="dualCheckWrap">
-          <input type="checkbox" id="dual" />
-          <span>تۆماری دوو سکرین لە یەک کاتدا</span>
-        </label>
-        <div class="hint" id="dualHint">دوو فایلی MP4 جیاواز بۆ هەر سکرینێک</div>
-
-        <div class="field">
-          <div class="label">شاشەی یەکەم</div>
-          <select id="monitor"></select>
-        </div>
-
-        <div id="dualBlock">
+      <div class="frame" id="panel-rec">
+        <div class="block">
+          <div class="block-title">گرتنی شاشە</div>
+          <label class="switch-row" id="dualCheckWrap">
+            <input type="checkbox" id="dual" />
+            <span>تۆماری دوو سکرین</span>
+          </label>
+          <div class="hint" id="dualHint">دوو فایلی MP4 جیاواز</div>
           <div class="field">
-            <div class="label">شاشەی دووەم</div>
-            <select id="monitorB"></select>
+            <div class="label">مۆنیتەر</div>
+            <select id="monitor"></select>
           </div>
-        </div>
-
-        <div class="field">
-          <div class="label">کوالیتی <span>4K + کەم ستۆرەیج</span></div>
-          <select id="quality">
-            <option value="low">نزم</option>
-            <option value="medium">ناوەند</option>
-            <option value="high" selected>4K کەم ستۆرەیج</option>
-            <option value="ultra">4K باشترین</option>
-          </select>
-        </div>
-
-        <div class="grid2">
-          <div class="field" style="margin-top:0">
-            <div class="label">FPS</div>
-            <select id="fps">
-              <option value="24">٢٤</option>
-              <option value="30" selected>٣٠</option>
-              <option value="60">٦٠</option>
+          <div id="dualBlock">
+            <div class="field">
+              <div class="label">مۆنیتەری دووەم</div>
+              <select id="monitorB"></select>
+            </div>
+          </div>
+          <div class="field">
+            <div class="label">کوالیتی</div>
+            <select id="quality">
+              <option value="low">نزم</option>
+              <option value="medium">ناوەند</option>
+              <option value="high" selected>بەرز · کەم ستۆرەیج</option>
+              <option value="ultra">زۆر بەرز</option>
+              <option value="max">بەرزترین · گەیمینگ</option>
             </select>
           </div>
-          <div class="field" style="margin-top:0">
-            <div class="label">کۆدێک</div>
-            <select id="codec">
-              <option value="hevc" selected>HEVC</option>
-              <option value="h264">H.264</option>
+          <div class="grid2">
+            <div class="field" style="margin-top:0">
+              <div class="label">FPS / Hz</div>
+              <select id="fps">
+                <option value="24">٢٤</option>
+                <option value="30" selected>٣٠</option>
+                <option value="48">٤٨</option>
+                <option value="60">٦٠</option>
+                <option value="90">٩٠</option>
+                <option value="120">١٢٠</option>
+              </select>
+            </div>
+            <div class="field" style="margin-top:0">
+              <div class="label">کۆدێک</div>
+              <select id="codec">
+                <option value="hevc" selected>HEVC</option>
+                <option value="h264">H.264</option>
+                <option value="vp9">VP9</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <div class="label">فۆرماتی فایل</div>
+            <select id="container">
+              <option value="mp4" selected>MP4</option>
+              <option value="avi">AVI</option>
+              <option value="asf">WMV / ASF</option>
             </select>
           </div>
+          <label class="switch-row"><input type="checkbox" id="cursor" checked /><span>نیشاندانی ماوس</span></label>
+          <label class="switch-row"><input type="checkbox" id="mic" checked /><span>مایکڕۆفۆن</span></label>
+          <div class="field" id="micDeviceField">
+            <div class="label">هەڵبژاردنی مایک</div>
+            <select id="micDevice"><option value="">مایکی بنەڕەتی</option></select>
+          </div>
+          <label class="switch-row"><input type="checkbox" id="annotate" checked /><span>قەلەم و شەیپ</span></label>
+          <button class="btn-block ghost" id="toggleAnnotate" type="button">کردنەوەی ئامرازەکانی وێنەکێشان</button>
         </div>
 
-        <label class="switch-row"><input type="checkbox" id="cursor" checked /><span>نیشاندانی ماوس</span></label>
-        <label class="switch-row"><input type="checkbox" id="mic" checked /><span>تۆماری مایکڕۆفۆن</span></label>
-        <label class="switch-row"><input type="checkbox" id="annotate" checked /><span>قەلەم و شەیپ لە کاتی تۆماردا</span></label>
-        <button class="btn-block ghost" id="toggleAnnotate" type="button" style="margin-top:8px">کردنەوەی ئامرازەکانی وێنەکێشان</button>
-        <div class="hint">قەلەم · هایلایت · تیر · شەیپ · سێلێکت · ماجیک — لە ڤیدیۆدا دەردەکەون</div>
+        <div class="block" id="panel-cam">
+          <div class="block-title">کامێرا</div>
+          <label class="switch-row"><input type="checkbox" id="camera" /><span>کامێرای فەیس</span></label>
+          <div class="field">
+            <div class="label">ئامێر</div>
+            <select id="camDevice"><option value="">دوای کردنەوەی کامێرا…</option></select>
+          </div>
+          <div class="grid2">
+            <div class="field" style="margin-top:0">
+              <div class="label">شێوە</div>
+              <select id="shape">
+                <option value="circle" selected>بازنە</option>
+                <option value="square">چوارگۆشە</option>
+                <option value="rounded">گۆشە نەرم</option>
+              </select>
+            </div>
+            <div class="field" style="margin-top:0">
+              <div class="label">فلتەر</div>
+              <select id="camFilter">
+                <option value="none" selected>ئاسایی</option>
+                <option value="soft">نەرم</option>
+                <option value="vivid">ڕوون</option>
+                <option value="mono">ڕەش و سپی</option>
+                <option value="warm">گەرم</option>
+                <option value="cool">سارد</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <div class="label">قەبارە <span id="camSizeVal">220</span></div>
+            <input type="range" id="camSize" min="140" max="360" value="220" />
+          </div>
+          <div class="section-label">گرین سکرین</div>
+          <label class="switch-row"><input type="checkbox" id="greenscreen" /><span>لابردنی پاشبنەما</span></label>
+          <div class="field">
+            <div class="label">ڕەنگی کلیلی</div>
+            <div class="color-row">
+              <div class="swatches" id="gsSwatches">
+                <button type="button" class="swatch active" data-color="#22c55e" style="background:#22c55e"></button>
+                <button type="button" class="swatch" data-color="#3b82f6" style="background:#3b82f6"></button>
+                <button type="button" class="swatch" data-color="#d946ef" style="background:#d946ef"></button>
+                <button type="button" class="swatch" data-color="#000000" style="background:#111"></button>
+              </div>
+              <input type="color" class="color-pick" id="gsColor" value="#22c55e" />
+            </div>
+          </div>
+          <div class="details-box">
+            <div class="field">
+              <div class="label">هێز <span id="gsStrengthVal">40</span></div>
+              <input type="range" id="gsStrength" min="10" max="90" value="40" />
+            </div>
+            <div class="field">
+              <div class="label">نەرمی لێوار <span id="gsSoftVal">35</span></div>
+              <input type="range" id="gsSoftness" min="0" max="80" value="35" />
+            </div>
+          </div>
+          <button class="btn-block" id="toggleCam" type="button">کردنەوە / داخستنی کامێرا</button>
+        </div>
+
+        <div class="block" id="panel-keys">
+          <div class="block-title">شۆرکەت</div>
+          <div class="hk-row" data-hk="hkStart">
+            <div class="label">دەستپێ / وەستان</div>
+            <input type="text" id="hkStart" value="Ctrl+Shift+R" readonly placeholder="بەتاڵ" />
+            <button class="hk-btn" type="button" data-edit="hkStart">✎</button>
+            <button class="hk-btn danger" type="button" data-clear="hkStart">×</button>
+          </div>
+          <div class="hk-row" data-hk="hkPause">
+            <div class="label">پۆز</div>
+            <input type="text" id="hkPause" value="Ctrl+Shift+P" readonly placeholder="بەتاڵ" />
+            <button class="hk-btn" type="button" data-edit="hkPause">✎</button>
+            <button class="hk-btn danger" type="button" data-clear="hkPause">×</button>
+          </div>
+          <div class="hk-row" data-hk="hkMic">
+            <div class="label">مایک</div>
+            <input type="text" id="hkMic" value="Ctrl+Shift+M" readonly placeholder="بەتاڵ" />
+            <button class="hk-btn" type="button" data-edit="hkMic">✎</button>
+            <button class="hk-btn danger" type="button" data-clear="hkMic">×</button>
+          </div>
+          <div class="hk-row" data-hk="hkCam">
+            <div class="label">کامێرا</div>
+            <input type="text" id="hkCam" value="Ctrl+Shift+C" readonly placeholder="بەتاڵ" />
+            <button class="hk-btn" type="button" data-edit="hkCam">✎</button>
+            <button class="hk-btn danger" type="button" data-clear="hkCam">×</button>
+          </div>
+          <div class="hk-row" data-hk="hkAnnotate">
+            <div class="label">قەلەم</div>
+            <input type="text" id="hkAnnotate" value="Ctrl+Shift+D" readonly placeholder="بەتاڵ" />
+            <button class="hk-btn" type="button" data-edit="hkAnnotate">✎</button>
+            <button class="hk-btn danger" type="button" data-clear="hkAnnotate">×</button>
+          </div>
+          <div class="hk-actions">
+            <button class="btn-block ghost" id="resetKeys" type="button">بنەڕەتی</button>
+            <button class="btn-block" id="saveKeys" type="button">پاشەکەوتکردن</button>
+          </div>
+        </div>
 
         <div class="footer-status">
-          <div class="status" id="status">ئامادەیە — لە کاتی تۆماردا تۆ دەیبینیت، بەڵام لە ڤیدیۆدا دەرناچێت</div>
+          <div class="status" id="status">ئامادەیە — تۆ دەیبینیت، لە ڤیدیۆدا دەرناچێت</div>
           <div class="error" id="error" hidden></div>
           <div class="actions" id="actions" hidden>
             <button class="pill" id="openFile" type="button">کردنەوەی فایل</button>
@@ -706,127 +484,106 @@
           <div class="path" id="path" hidden></div>
         </div>
       </div>
-
-      <div class="panel" id="panel-cam">
-        <label class="switch-row"><input type="checkbox" id="camera" /><span>کامێرای فەیس (پۆپاپ)</span></label>
-
-        <div class="field">
-          <div class="label">هەڵبژاردنی کامێرا</div>
-          <select id="camDevice">
-            <option value="">دوای کردنەوەی کامێرا…</option>
-          </select>
-        </div>
-
-        <div class="grid2">
-          <div class="field" style="margin-top:0">
-            <div class="label">شێوە</div>
-            <select id="shape">
-              <option value="circle" selected>بازنە</option>
-              <option value="square">چوارگۆشە</option>
-              <option value="rounded">گۆشە نەرم</option>
-            </select>
-          </div>
-          <div class="field" style="margin-top:0">
-            <div class="label">فلتەر</div>
-            <select id="camFilter">
-              <option value="none" selected>ئاسایی</option>
-              <option value="soft">نەرم</option>
-              <option value="vivid">ڕوون</option>
-              <option value="mono">ڕەش و سپی</option>
-              <option value="warm">گەرم</option>
-              <option value="cool">سارد</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="field">
-          <div class="label">قەبارە <span id="camSizeVal">220</span></div>
-          <input type="range" id="camSize" min="140" max="360" value="220" />
-        </div>
-
-        <div class="section-label">گرین سکرین</div>
-        <label class="switch-row"><input type="checkbox" id="greenscreen" /><span>لابردنی پاشبنەما</span></label>
-
-        <div class="field">
-          <div class="label">ڕەنگی کلیلی</div>
-          <div class="color-row">
-            <div class="swatches" id="gsSwatches">
-              <button type="button" class="swatch active" data-color="#22c55e" style="background:#22c55e" title="سەوز"></button>
-              <button type="button" class="swatch" data-color="#3b82f6" style="background:#3b82f6" title="شین"></button>
-              <button type="button" class="swatch" data-color="#d946ef" style="background:#d946ef" title="مەجەنتا"></button>
-              <button type="button" class="swatch" data-color="#000000" style="background:#111" title="ڕەش"></button>
-            </div>
-            <input type="color" class="color-pick" id="gsColor" value="#22c55e" title="ڕەنگی خۆت" />
-          </div>
-        </div>
-
-        <div class="details-box">
-          <div class="section-label" style="margin-top:0">وردەکاری</div>
-          <div class="field">
-            <div class="label">هێز <span id="gsStrengthVal">40</span></div>
-            <input type="range" id="gsStrength" min="10" max="90" value="40" />
-          </div>
-          <div class="field">
-            <div class="label">نەرمی لێوار <span id="gsSoftVal">35</span></div>
-            <input type="range" id="gsSoftness" min="0" max="80" value="35" />
-          </div>
-        </div>
-
-        <button class="btn-block" id="toggleCam" type="button" style="margin-top:10px">کردنەوە / داخستنی پۆپاپی کامێرا</button>
-        <div class="hint">پۆپاپەکە هەمیشە لەسەرەوەیە و لە کاتی تۆماردا لە ڤیدیۆدا دەردەکەوێت.</div>
-      </div>
-
-      <div class="panel" id="panel-keys">
-        <div class="field">
-          <div class="label">دەستپێ / وەستان</div>
-          <input type="text" id="hkStart" value="Ctrl+Shift+R" readonly />
-        </div>
-        <div class="field">
-          <div class="label">پۆز / بەردەوامبوونەوە</div>
-          <input type="text" id="hkPause" value="Ctrl+Shift+P" readonly />
-        </div>
-        <div class="field">
-          <div class="label">مایک</div>
-          <input type="text" id="hkMic" value="Ctrl+Shift+M" readonly />
-        </div>
-        <div class="field">
-          <div class="label">کامێرا</div>
-          <input type="text" id="hkCam" value="Ctrl+Shift+C" readonly />
-        </div>
-        <div class="field">
-          <div class="label">قەلەم / وێنەکێشان</div>
-          <input type="text" id="hkAnnotate" value="Ctrl+Shift+D" readonly />
-        </div>
-        <div class="hint">سەر خانەکە کلیک بکە و شۆرکەتی نوێ داگرە.</div>
-        <button class="btn-block ghost" id="saveKeys" type="button">پاشەکەوتکردنی شۆرکەتەکان</button>
-      </div>
     </section>
-
-    <nav class="bottom-nav" aria-label="بەشەکان">
-      <div class="nav-track">
-        <div class="nav-thumb" id="navThumb" data-i="0"></div>
-        <button class="tab active" data-tab="rec" data-i="0" type="button">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/></svg>
-          <span>تۆمار</span>
-        </button>
-        <button class="tab" data-tab="cam" data-i="1" type="button">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8.5h10.5A1.5 1.5 0 0 1 16 10v6.5a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 16.5V10A1.5 1.5 0 0 1 4 8.5z"/><path d="M16 11.2l5-2.7v9l-5-2.7z"/></svg>
-          <span>کامێرا</span>
-        </button>
-        <button class="tab" data-tab="keys" data-i="2" type="button">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="11" rx="2"/><path d="M7 14h2M11 14h2M15 14h2M8 10h.01M12 10h.01M16 10h.01"/></svg>
-          <span>شۆرکەت</span>
-        </button>
-      </div>
-    </nav>
   </div>
-
   <script>
     const state = {
       recording: false, saving: false, paused: false, lastPath: null,
-      summary: "4K کەم ستۆرەیج · 30fps · HEVC · یەک سکرین",
-      syncing: false, listening: null, dualAvailable: false,
+      summary: "بەرز · 30fps · HEVC · MP4 · یەک سکرین",
+      syncing: false, listening: null, listeningPrev: "", dualAvailable: false,
+      hotkeysDirty: false,
     };
+
+    const HK_DEFAULTS = {
+      hkStart: "Ctrl+Shift+R",
+      hkPause: "Ctrl+Shift+P",
+      hkMic: "Ctrl+Shift+M",
+      hkCam: "Ctrl+Shift+C",
+      hkAnnotate: "Ctrl+Shift+D",
+    };
+
+    function normalizeHotkeyKey(e) {
+      const k = e.key;
+      if (k === " ") return "Space";
+      if (/^Arrow/.test(k)) return k.replace("Arrow", "");
+      if (/^F\d{1,2}$/i.test(k)) return k.toUpperCase();
+      if (k.length === 1) return k.toUpperCase();
+      if (["Tab","Enter","Backspace","Delete","Insert","Home","End","PageUp","PageDown"].includes(k)) return k;
+      return null;
+    }
+
+    function displayHotkey(raw) {
+      const v = (raw || "").trim();
+      if (!v || v === "—" || v === "none") return "";
+      return v;
+    }
+
+    function syncHotkeyRows() {
+      ["hkStart","hkPause","hkMic","hkCam","hkAnnotate"].forEach((id) => {
+        const el = document.getElementById(id);
+        const row = el?.closest(".hk-row");
+        if (!el || !row) return;
+        const empty = !displayHotkey(el.value);
+        if (empty && state.listening !== id) el.value = "";
+        row.classList.toggle("empty", empty && state.listening !== id);
+        row.classList.toggle("listening", state.listening === id);
+      });
+    }
+
+    function startListen(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (state.listening && state.listening !== id) {
+        const prev = document.getElementById(state.listening);
+        if (prev) prev.value = state.listeningPrev;
+      }
+      state.listeningPrev = displayHotkey(el.value) || "";
+      state.listening = id;
+      state.hotkeysDirty = true;
+      el.value = "کلیل داگرە…";
+      el.focus();
+      syncHotkeyRows();
+      send("hotkeys_suspend");
+    }
+
+    function cancelListen() {
+      if (!state.listening) return;
+      const el = document.getElementById(state.listening);
+      if (el) el.value = state.listeningPrev;
+      state.listening = null;
+      state.hotkeysDirty = false;
+      syncHotkeyRows();
+      send("hotkeys_resume");
+    }
+
+    function clearHotkey(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const wasListening = state.listening === id;
+      if (wasListening) state.listening = null;
+      el.value = "";
+      state.hotkeysDirty = true;
+      syncHotkeyRows();
+      commitHotkeys(false);
+      toast("شۆرکەت سڕایەوە");
+    }
+
+    function commitHotkeys(showToast) {
+      if (state.listening) {
+        const el = document.getElementById(state.listening);
+        if (el) el.value = state.listeningPrev;
+        state.listening = null;
+      }
+      ["hkStart","hkPause","hkMic","hkCam","hkAnnotate"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.value = displayHotkey(el.value);
+      });
+      state.hotkeysDirty = false;
+      syncHotkeyRows();
+      send("save_hotkeys", currentSettings());
+      if (showToast) toast("شۆرکەتەکان پاشەکەوت کران");
+    }
 
     function send(cmd, data = {}) {
       window.ipc.postMessage(JSON.stringify({ cmd, ...data }));
@@ -896,7 +653,9 @@
         quality: document.getElementById("quality").value,
         fps: Number(document.getElementById("fps").value || 30),
         codec: document.getElementById("codec").value,
+        container: document.getElementById("container").value,
         mic: document.getElementById("mic").checked,
+        micDevice: document.getElementById("micDevice").value || "",
         camera: document.getElementById("camera").checked,
         camDevice: document.getElementById("camDevice").value || "",
         shape: document.getElementById("shape").value,
@@ -907,11 +666,11 @@
         gsSoftness: Number(document.getElementById("gsSoftness").value || 35),
         camSize: Number(document.getElementById("camSize").value || 220),
         annotate: document.getElementById("annotate").checked,
-        hotkey_start_stop: document.getElementById("hkStart").value,
-        hotkey_mic: document.getElementById("hkMic").value,
-        hotkey_camera: document.getElementById("hkCam").value,
-        hotkey_pause: document.getElementById("hkPause").value,
-        hotkey_annotate: document.getElementById("hkAnnotate").value,
+        hotkey_start_stop: displayHotkey(document.getElementById("hkStart").value),
+        hotkey_mic: displayHotkey(document.getElementById("hkMic").value),
+        hotkey_camera: displayHotkey(document.getElementById("hkCam").value),
+        hotkey_pause: displayHotkey(document.getElementById("hkPause").value),
+        hotkey_annotate: displayHotkey(document.getElementById("hkAnnotate").value),
       };
     }
 
@@ -931,12 +690,17 @@
     function updateLocalMeta() {
       const q = document.getElementById("quality").value;
       const fps = document.getElementById("fps").value;
-      const codec = document.getElementById("codec").value === "hevc" ? "HEVC" : "H.264";
-      const qLabel = { low: "نزم", medium: "ناوەند", high: "4K کەم ستۆرەیج", ultra: "4K باشترین" }[q] || "4K";
+      const codecMap = { hevc: "HEVC", h264: "H.264", vp9: "VP9" };
+      const codec = codecMap[document.getElementById("codec").value] || "HEVC";
+      const fmtMap = { mp4: "MP4", avi: "AVI", asf: "WMV" };
+      const fmt = fmtMap[document.getElementById("container").value] || "MP4";
+      const qLabel = {
+        low: "نزم", medium: "ناوەند", high: "بەرز", ultra: "زۆر بەرز", max: "بەرزترین",
+      }[q] || "بەرز";
       const mic = document.getElementById("mic").checked ? "مایک" : "بێدەنگ";
       const dual = document.getElementById("dual").checked && state.dualAvailable ? "دوو سکرین" : "یەک سکرین";
-      state.summary = `${qLabel} · ${fps}fps · ${codec} · ${mic} · ${dual}`;
-      document.getElementById("chipCodec").textContent = codec;
+      state.summary = `${qLabel} · ${fps}fps · ${codec} · ${fmt} · ${mic} · ${dual}`;
+      document.getElementById("chipCodec").textContent = `${codec} · ${fmt}`;
       if (!state.recording && !state.saving) {
         document.getElementById("meta").textContent = state.summary;
         document.getElementById("meta").classList.remove("live", "pause");
@@ -952,8 +716,9 @@
     }
 
     function setDisabled(disabled) {
-      ["monitor","monitorB","dual","quality","fps","codec","cursor","mic"].forEach((id) => {
+      ["monitor","monitorB","dual","quality","fps","codec","container","cursor","mic","micDevice"].forEach((id) => {
         const el = document.getElementById(id);
+        if (!el) return;
         if (id === "dual") el.disabled = disabled || !state.dualAvailable;
         else el.disabled = disabled;
       });
@@ -964,28 +729,10 @@
           row.style.opacity = input.disabled ? "0.55" : "1";
         }
       });
+      const micOn = document.getElementById("mic").checked;
+      document.getElementById("micDeviceField").style.opacity = micOn && !disabled ? "1" : "0.55";
+      document.getElementById("micDevice").disabled = disabled || !micOn;
     }
-
-    function moveNavThumb(index) {
-      const thumb = document.getElementById("navThumb");
-      if (thumb) thumb.dataset.i = String(index);
-    }
-
-    document.querySelectorAll(".tab").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        document.querySelectorAll(".tab").forEach((b) => b.classList.remove("active"));
-        document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
-        btn.classList.add("active");
-        const panel = document.getElementById("panel-" + btn.dataset.tab);
-        panel.classList.add("active");
-        // retrigger enter animation
-        panel.style.animation = "none";
-        void panel.offsetWidth;
-        panel.style.animation = "";
-        moveNavThumb(Number(btn.dataset.i || 0));
-      });
-    });
-    moveNavThumb(0);
 
     function setUi(payload) {
       state.syncing = true;
@@ -999,8 +746,14 @@
       if (payload.quality != null) document.getElementById("quality").value = payload.quality;
       if (payload.fps != null) document.getElementById("fps").value = String(payload.fps);
       if (payload.codec != null) document.getElementById("codec").value = payload.codec;
+      if (payload.container != null) document.getElementById("container").value = payload.container;
       if (payload.cursor != null) document.getElementById("cursor").checked = !!payload.cursor;
       if (payload.mic != null) document.getElementById("mic").checked = !!payload.mic;
+      if (payload.micDevices) fillMicDevices(payload.micDevices, payload.micDevice);
+      else if (payload.micDevice != null) {
+        const sel = document.getElementById("micDevice");
+        if ([...sel.options].some((o) => o.value === payload.micDevice)) sel.value = payload.micDevice;
+      }
       if (payload.camera != null) document.getElementById("camera").checked = !!payload.camera;
       if (payload.camDevices) fillCamDevices(payload.camDevices, payload.camDevice);
       else if (payload.camDevice != null) {
@@ -1023,11 +776,14 @@
         document.getElementById("camSize").value = String(payload.camSize);
         document.getElementById("camSizeVal").textContent = String(payload.camSize);
       }
-      if (payload.hotkey_start_stop) document.getElementById("hkStart").value = payload.hotkey_start_stop;
-      if (payload.hotkey_mic) document.getElementById("hkMic").value = payload.hotkey_mic;
-      if (payload.hotkey_camera) document.getElementById("hkCam").value = payload.hotkey_camera;
-      if (payload.hotkey_pause) document.getElementById("hkPause").value = payload.hotkey_pause;
-      if (payload.hotkey_annotate) document.getElementById("hkAnnotate").value = payload.hotkey_annotate;
+      if (!state.listening && !state.hotkeysDirty) {
+        if (payload.hotkey_start_stop != null) document.getElementById("hkStart").value = displayHotkey(payload.hotkey_start_stop);
+        if (payload.hotkey_mic != null) document.getElementById("hkMic").value = displayHotkey(payload.hotkey_mic);
+        if (payload.hotkey_camera != null) document.getElementById("hkCam").value = displayHotkey(payload.hotkey_camera);
+        if (payload.hotkey_pause != null) document.getElementById("hkPause").value = displayHotkey(payload.hotkey_pause);
+        if (payload.hotkey_annotate != null) document.getElementById("hkAnnotate").value = displayHotkey(payload.hotkey_annotate);
+        syncHotkeyRows();
+      }
       if (payload.annotate != null) document.getElementById("annotate").checked = !!payload.annotate;
       if (payload.summary) state.summary = payload.summary;
       if (payload.elapsed != null) document.getElementById("clock").textContent = fmtTime(payload.elapsed);
@@ -1143,11 +899,33 @@
       document.getElementById("gsSoftVal").textContent = document.getElementById("gsSoftness").value;
     }
 
-    ["monitor","monitorB","dual","quality","fps","codec","cursor","mic","annotate","camera","camDevice","shape","camFilter","greenscreen","gsStrength","gsSoftness","camSize","gsColor"]
+    function fillMicDevices(list, selected) {
+      const sel = document.getElementById("micDevice");
+      const prev = selected != null ? selected : sel.value;
+      sel.innerHTML = "";
+      const def = document.createElement("option");
+      def.value = "";
+      def.textContent = list && list.length ? "مایکی بنەڕەتی" : "هیچ مایکێک نەدۆزرایەوە";
+      sel.appendChild(def);
+      (list || []).forEach((d) => {
+        const o = document.createElement("option");
+        o.value = d.id;
+        o.textContent = d.label || d.id;
+        sel.appendChild(o);
+      });
+      if (prev && [...sel.options].some((o) => o.value === prev)) sel.value = prev;
+    }
+
+    ["monitor","monitorB","dual","quality","fps","codec","container","cursor","mic","micDevice","annotate","camera","camDevice","shape","camFilter","greenscreen","gsStrength","gsSoftness","camSize","gsColor"]
       .forEach((id) => document.getElementById(id).addEventListener("change", () => {
         const row = document.getElementById(id)?.closest?.(".switch-row");
         if (row) row.classList.toggle("on", document.getElementById(id).checked);
         if (id === "gsColor") setGsColor(document.getElementById("gsColor").value, false);
+        if (id === "mic") {
+          const on = document.getElementById("mic").checked;
+          document.getElementById("micDevice").disabled = !on || state.recording || state.saving;
+          document.getElementById("micDeviceField").style.opacity = on ? "1" : "0.55";
+        }
         syncRangeLabels();
         pushSettings();
       }));
@@ -1183,14 +961,19 @@
     document.getElementById("openFile").addEventListener("click", () => send("open_file"));
     document.getElementById("openFolder").addEventListener("click", () => send("open_folder"));
 
-    function bindHotkeyInput(id) {
-      const el = document.getElementById(id);
-      el.addEventListener("click", () => {
-        state.listening = id;
-        el.value = "کلیل داگرە…";
+    document.querySelectorAll("[data-edit]").forEach((btn) => {
+      btn.addEventListener("click", () => startListen(btn.dataset.edit));
+    });
+    document.querySelectorAll("[data-clear]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        clearHotkey(btn.dataset.clear);
       });
-    }
-    ["hkStart","hkPause","hkMic","hkCam","hkAnnotate"].forEach(bindHotkeyInput);
+    });
+    ["hkStart","hkPause","hkMic","hkCam","hkAnnotate"].forEach((id) => {
+      document.getElementById(id).addEventListener("click", () => startListen(id));
+    });
 
     document.getElementById("toggleAnnotate").addEventListener("click", () => {
       document.getElementById("annotate").checked = true;
@@ -1202,26 +985,62 @@
     window.addEventListener("keydown", (e) => {
       if (!state.listening) return;
       e.preventDefault();
+      e.stopPropagation();
       if (e.key === "Escape") {
-        state.listening = null;
-        pushSettings();
+        cancelListen();
         return;
       }
+      if (e.key === "Backspace" || e.key === "Delete") {
+        clearHotkey(state.listening);
+        return;
+      }
+      if (["Control","Shift","Alt","Meta"].includes(e.key)) return;
+
       const parts = [];
       if (e.ctrlKey) parts.push("Ctrl");
       if (e.shiftKey) parts.push("Shift");
       if (e.altKey) parts.push("Alt");
-      const key = e.key.length === 1 ? e.key.toUpperCase() : e.key;
-      if (!["Control","Shift","Alt","Meta"].includes(e.key)) parts.push(key);
-      if (parts.length < 2) return;
-      document.getElementById(state.listening).value = parts.join("+");
+      if (e.metaKey) parts.push("Win");
+      const key = normalizeHotkeyKey(e);
+      if (!key) return;
+      parts.push(key);
+      if (parts.length < 2) {
+        toast("Ctrl یان Shift یان Alt پێویستە");
+        return;
+      }
+      const combo = parts.join("+");
+      const target = state.listening;
+      const clash = ["hkStart","hkPause","hkMic","hkCam","hkAnnotate"].find((id) => {
+        return id !== target && displayHotkey(document.getElementById(id).value) === combo;
+      });
+      if (clash) {
+        toast("ئەم شۆرکەتە پێشتر بەکارهاتووە");
+        return;
+      }
+      document.getElementById(target).value = combo;
       state.listening = null;
+      state.hotkeysDirty = true;
+      syncHotkeyRows();
+      commitHotkeys(false);
+    }, true);
+
+    document.getElementById("resetKeys").addEventListener("click", () => {
+      if (state.listening) {
+        state.listening = null;
+        state.hotkeysDirty = false;
+      }
+      Object.entries(HK_DEFAULTS).forEach(([id, val]) => {
+        document.getElementById(id).value = val;
+      });
+      state.hotkeysDirty = true;
+      syncHotkeyRows();
+      commitHotkeys(false);
     });
 
     document.getElementById("saveKeys").addEventListener("click", () => {
-      send("save_hotkeys", currentSettings());
-      toast("شۆرکەتەکان پاشەکەوت کران");
+      commitHotkeys(true);
     });
+    syncHotkeyRows();
 
     document.querySelectorAll(".switch-row").forEach((row) => {
       const input = row.querySelector('input[type="checkbox"]');

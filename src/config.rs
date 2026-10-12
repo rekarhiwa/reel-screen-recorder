@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use crate::recorder::{Codec, Quality};
+use crate::recorder::{allowed_fps, Codec, ContainerFormat, Quality};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default)]
@@ -19,7 +19,11 @@ pub struct AppConfig {
     pub quality: String,
     pub fps: u32,
     pub codec: String,
+    #[serde(default = "default_container")]
+    pub container: String,
     pub mic_enabled: bool,
+    #[serde(default)]
+    pub mic_device_id: String,
     pub camera_enabled: bool,
     #[serde(default)]
     pub camera_device_id: String,
@@ -68,6 +72,10 @@ fn default_annotate_hotkey() -> String {
     "Ctrl+Shift+D".into()
 }
 
+fn default_container() -> String {
+    "mp4".into()
+}
+
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
@@ -79,7 +87,9 @@ impl Default for AppConfig {
             quality: "high".into(),
             fps: 30,
             codec: "hevc".into(),
+            container: default_container(),
             mic_enabled: true,
+            mic_device_id: String::new(),
             camera_enabled: false,
             camera_device_id: String::new(),
             camera_shape: "circle".into(),
@@ -122,6 +132,15 @@ impl AppConfig {
         }
         if cfg.settings_version < 3 {
             cfg.settings_version = 3;
+        }
+        if cfg.settings_version < 4 {
+            if cfg.container.trim().is_empty() {
+                cfg.container = default_container();
+            }
+            if !allowed_fps(cfg.fps) {
+                cfg.fps = 60;
+            }
+            cfg.settings_version = 4;
             cfg.save();
         }
         cfg
@@ -140,5 +159,9 @@ impl AppConfig {
 
     pub fn codec(&self) -> Codec {
         Codec::parse(&self.codec)
+    }
+
+    pub fn container(&self) -> ContainerFormat {
+        ContainerFormat::parse(&self.container)
     }
 }

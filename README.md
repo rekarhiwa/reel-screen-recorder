@@ -2,7 +2,21 @@
 
 ئەپێکی دێسکتۆپی کوردی بۆ تۆمارکردنی شاشە لە ویندۆز (MP4).
 
-## کردنەوە
+## دامەزراندن (Installer)
+
+1. بیلدی ئەپ و سێتئەپ:
+```powershell
+.\scripts\build-installer.ps1
+```
+2. فایلەکە بکەوە: `dist\REEL-Setup-0.3.0.exe`
+3. لە کاتی دامەزراندندا **ئایکۆنی Desktop** هەڵبژێردراوە — لەسەر شاشە دەردەکەوێت
+
+یان خێرا بەبێ ویزارد:
+```powershell
+.\scripts\install-desktop.ps1
+```
+
+## کردنەوە (گەشەپێدان)
 
 ```powershell
 .\target\release\screen-recorder.exe

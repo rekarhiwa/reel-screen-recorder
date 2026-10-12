@@ -8,8 +8,8 @@ use std::sync::Mutex;
 use windows_capture::{
     capture::{CaptureControl, Context, GraphicsCaptureApiHandler},
     encoder::{
-        AudioSettingsBuilder, ContainerSettingsBuilder, VideoEncoder, VideoSettingsBuilder,
-        VideoSettingsSubType,
+        AudioSettingsBuilder, ContainerSettingsBuilder, ContainerSettingsSubType, VideoEncoder,
+        VideoSettingsBuilder, VideoSettingsSubType,
     },
     frame::Frame,
     graphics_capture_api::InternalCaptureControl,
@@ -32,6 +32,7 @@ pub enum Quality {
     Medium,
     High,
     Ultra,
+    Max,
 }
 
 impl Quality {
@@ -40,6 +41,7 @@ impl Quality {
             "low" => Self::Low,
             "medium" => Self::Medium,
             "ultra" => Self::Ultra,
+            "max" | "extreme" => Self::Max,
             _ => Self::High,
         }
     }
@@ -50,6 +52,7 @@ impl Quality {
             Self::Medium => "medium",
             Self::High => "high",
             Self::Ultra => "ultra",
+            Self::Max => "max",
         }
     }
 
@@ -57,56 +60,57 @@ impl Quality {
         match self {
             Self::Low => "نزم",
             Self::Medium => "ناوەند",
-            Self::High => "4K کەم ستۆرەیج",
-            Self::Ultra => "4K باشترین",
+            Self::High => "بەرز · کەم ستۆرەیج",
+            Self::Ultra => "زۆر بەرز",
+            Self::Max => "بەرزترین · گەیمینگ",
         }
     }
 
     /// Storage-aware bitrate for sharp screen content (especially 4K + HEVC).
-    /// Factor is millibits-per-pixel; HEVC needs ~60% of H.264 for similar look.
+    /// Factor is millibits-per-pixel; HEVC/VP9 need less than H.264 for similar look.
     pub fn bitrate_bps(self, width: u32, height: u32, fps: u32, codec: Codec) -> u32 {
         let pixels = u64::from(width.max(2)) * u64::from(height.max(2));
         let fps = u64::from(fps.max(1));
-        // Tuned for 4K screen recording with much smaller files than the old curve.
         let factor = match self {
             Self::Low => 40,
             Self::Medium => 60,
-            Self::High => 85,   // 4K60 HEVC ≈ 25–35 Mbps
-            Self::Ultra => 120, // sharper text, still capped for storage
+            Self::High => 90,
+            Self::Ultra => 140,
+            Self::Max => 220,
         };
         let mut bps = pixels
             .saturating_mul(fps)
             .saturating_mul(factor)
             / 1000;
-        if matches!(codec, Codec::H264) {
-            // H.264 is less efficient — bump bitrate, still capped below.
-            bps = bps.saturating_mul(16) / 10;
+        match codec {
+            Codec::H264 => bps = bps.saturating_mul(16) / 10,
+            Codec::Vp9 => bps = bps.saturating_mul(9) / 10,
+            Codec::Hevc => {}
         }
 
-        // Hard caps by resolution class to protect disk space.
         let (min_bps, max_bps) = if pixels >= 3_500_000 {
-            // ~4K and above
             match self {
                 Self::Low => (6_000_000, 16_000_000),
                 Self::Medium => (10_000_000, 24_000_000),
-                Self::High => (14_000_000, 32_000_000),
-                Self::Ultra => (18_000_000, 42_000_000),
+                Self::High => (16_000_000, 36_000_000),
+                Self::Ultra => (24_000_000, 55_000_000),
+                Self::Max => (35_000_000, 80_000_000),
             }
         } else if pixels >= 2_000_000 {
-            // ~1440p
             match self {
                 Self::Low => (4_000_000, 10_000_000),
                 Self::Medium => (6_000_000, 14_000_000),
-                Self::High => (8_000_000, 18_000_000),
-                Self::Ultra => (10_000_000, 24_000_000),
+                Self::High => (9_000_000, 20_000_000),
+                Self::Ultra => (14_000_000, 32_000_000),
+                Self::Max => (20_000_000, 48_000_000),
             }
         } else {
-            // 1080p and below
             match self {
                 Self::Low => (2_500_000, 6_000_000),
                 Self::Medium => (3_500_000, 9_000_000),
-                Self::High => (5_000_000, 12_000_000),
-                Self::Ultra => (7_000_000, 16_000_000),
+                Self::High => (5_500_000, 14_000_000),
+                Self::Ultra => (8_000_000, 20_000_000),
+                Self::Max => (12_000_000, 30_000_000),
             }
         };
 
@@ -118,12 +122,14 @@ impl Quality {
 pub enum Codec {
     H264,
     Hevc,
+    Vp9,
 }
 
 impl Codec {
     pub fn parse(s: &str) -> Self {
         match s {
             "hevc" | "h265" => Self::Hevc,
+            "vp9" => Self::Vp9,
             _ => Self::H264,
         }
     }
@@ -132,6 +138,7 @@ impl Codec {
         match self {
             Self::H264 => "h264",
             Self::Hevc => "hevc",
+            Self::Vp9 => "vp9",
         }
     }
 
@@ -139,6 +146,7 @@ impl Codec {
         match self {
             Self::H264 => "H.264",
             Self::Hevc => "HEVC",
+            Self::Vp9 => "VP9",
         }
     }
 
@@ -146,8 +154,62 @@ impl Codec {
         match self {
             Self::H264 => VideoSettingsSubType::H264,
             Self::Hevc => VideoSettingsSubType::HEVC,
+            Self::Vp9 => VideoSettingsSubType::VP9,
         }
     }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ContainerFormat {
+    Mp4,
+    Avi,
+    Asf,
+}
+
+impl ContainerFormat {
+    pub fn parse(s: &str) -> Self {
+        match s {
+            "avi" => Self::Avi,
+            "asf" | "wmv" => Self::Asf,
+            _ => Self::Mp4,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Mp4 => "mp4",
+            Self::Avi => "avi",
+            Self::Asf => "asf",
+        }
+    }
+
+    pub fn extension(self) -> &'static str {
+        match self {
+            Self::Mp4 => "mp4",
+            Self::Avi => "avi",
+            Self::Asf => "wmv",
+        }
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Mp4 => "MP4",
+            Self::Avi => "AVI",
+            Self::Asf => "WMV/ASF",
+        }
+    }
+
+    fn subtype(self) -> ContainerSettingsSubType {
+        match self {
+            Self::Mp4 => ContainerSettingsSubType::MPEG4,
+            Self::Avi => ContainerSettingsSubType::AVI,
+            Self::Asf => ContainerSettingsSubType::ASF,
+        }
+    }
+}
+
+pub fn allowed_fps(fps: u32) -> bool {
+    matches!(fps, 24 | 30 | 48 | 60 | 90 | 120)
 }
 
 #[derive(Clone, Debug)]
@@ -157,6 +219,7 @@ pub struct RecordConfig {
     pub quality: Quality,
     pub fps: u32,
     pub codec: Codec,
+    pub container: ContainerFormat,
     pub mic_enabled: bool,
 }
 
@@ -165,10 +228,10 @@ impl Default for RecordConfig {
         Self {
             monitor_index: 0,
             show_cursor: true,
-            // 4K-looking quality with HEVC + 30fps = much less storage.
             quality: Quality::High,
             fps: 30,
             codec: Codec::Hevc,
+            container: ContainerFormat::Mp4,
             mic_enabled: true,
         }
     }
@@ -176,7 +239,7 @@ impl Default for RecordConfig {
 
 impl RecordConfig {
     pub fn normalize(mut self) -> Self {
-        if self.fps != 24 && self.fps != 30 && self.fps != 60 {
+        if !allowed_fps(self.fps) {
             self.fps = 60;
         }
         self
@@ -185,10 +248,11 @@ impl RecordConfig {
     pub fn summary_ckb(&self) -> String {
         let mic = if self.mic_enabled { "مایک" } else { "بێدەنگ" };
         format!(
-            "{} · {}fps · {} · {}",
+            "{} · {}fps · {} · {} · {}",
             self.quality.label_ckb(),
             self.fps,
             self.codec.label(),
+            self.container.label(),
             mic
         )
     }
@@ -302,6 +366,7 @@ struct CaptureFlags {
     bitrate: u32,
     fps: u32,
     codec: Codec,
+    container: ContainerFormat,
     mic_enabled: bool,
     mic_buffer: Option<crate::audio::MicBuffer>,
     stats: SharedStats,
@@ -337,13 +402,9 @@ impl GraphicsCaptureApiHandler for Recorder {
             AudioSettingsBuilder::default().disabled(true)
         };
 
-        let encoder = VideoEncoder::new(
-            video,
-            audio,
-            ContainerSettingsBuilder::default(),
-            &flags.output,
-        )
-        .with_context(|| format!("failed to create encoder for {}", flags.output.display()))?;
+        let container = ContainerSettingsBuilder::new().sub_type(flags.container.subtype());
+        let encoder = VideoEncoder::new(video, audio, container, &flags.output)
+            .with_context(|| format!("failed to create encoder for {}", flags.output.display()))?;
 
         if let Ok(mut guard) = flags.stats.started_at.lock() {
             *guard = Some(Instant::now());
@@ -393,24 +454,40 @@ impl GraphicsCaptureApiHandler for Recorder {
         }
 
         if let Some(encoder) = self.encoder.as_mut() {
-            encoder
-                .send_frame(frame)
-                .context("failed to encode frame")?;
             self.last_sent = Some(now);
             self.stats.frame_count.fetch_add(1, Ordering::SeqCst);
 
             if self.mic_enabled {
-                // ~one frame worth of stereo i16 @ 48kHz, with a little headroom.
-                let want = (48_000 / self.fps.max(1) * 2 * 2).max(4) as usize * 2;
+                // Exactly one video-frame of stereo i16 @ 48 kHz (channels*bytes).
+                // Previous code asked for 2× and padded silence — audio ran ahead and sounded empty.
+                let frames = (48_000 / self.fps.max(1)).max(1) as usize;
+                let want = frames * 4;
+                // Allow catching up a bit if mic backlog grew (max ~2 frames).
+                let take = want.saturating_mul(2);
                 let mut pcm = self
                     .mic_buffer
                     .as_ref()
-                    .map(|b| b.drain(want))
+                    .map(|b| b.drain(take))
                     .unwrap_or_default();
+                // Keep A/V lock: never send less than one frame (pad silence if quiet).
                 if pcm.len() < want {
                     pcm.resize(want, 0);
+                } else {
+                    // Trim to whole frames; prefer ~1 frame unless backlog is large.
+                    let keep = if pcm.len() > want + want / 2 {
+                        ((pcm.len() / 4) * 4).min(want * 2)
+                    } else {
+                        want
+                    };
+                    pcm.truncate(keep);
                 }
-                let _ = encoder.send_audio_buffer(&pcm, 0);
+                encoder
+                    .send_frame_with_audio(frame, &pcm)
+                    .context("failed to encode frame+audio")?;
+            } else {
+                encoder
+                    .send_frame(frame)
+                    .context("failed to encode frame")?;
             }
         }
 
@@ -471,21 +548,20 @@ pub fn recordings_dir() -> Result<PathBuf> {
 }
 
 pub fn default_output_path() -> Result<PathBuf> {
-    let dir = recordings_dir()?;
-    let stamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
-    Ok(dir.join(format!("recording_{stamp}.mp4")))
+    output_paths(1, ContainerFormat::Mp4).map(|mut v| v.remove(0))
 }
 
-/// One file for single-screen, or `*_s1.mp4` / `*_s2.mp4` for dual.
-pub fn output_paths(count: usize) -> Result<Vec<PathBuf>> {
+/// One file for single-screen, or `*_s1.ext` / `*_s2.ext` for dual.
+pub fn output_paths(count: usize, container: ContainerFormat) -> Result<Vec<PathBuf>> {
     let dir = recordings_dir()?;
     let stamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
+    let ext = container.extension();
     let count = count.max(1);
     if count == 1 {
-        Ok(vec![dir.join(format!("recording_{stamp}.mp4"))])
+        Ok(vec![dir.join(format!("recording_{stamp}.{ext}"))])
     } else {
         Ok((1..=count)
-            .map(|i| dir.join(format!("recording_{stamp}_s{i}.mp4")))
+            .map(|i| dir.join(format!("recording_{stamp}_s{i}.{ext}")))
             .collect())
     }
 }
@@ -508,13 +584,16 @@ impl ActiveCapture {
     ) -> Result<Self> {
         let config = config.normalize();
 
-        if output
+        let ext_ok = output
             .extension()
             .and_then(|e| e.to_str())
-            .map(|e| e.eq_ignore_ascii_case("mp4"))
-            != Some(true)
-        {
-            bail!("output file must end with .mp4");
+            .map(|e| {
+                let e = e.to_ascii_lowercase();
+                e == "mp4" || e == "avi" || e == "wmv" || e == "asf"
+            })
+            .unwrap_or(false);
+        if !ext_ok {
+            bail!("output file must end with .mp4 / .avi / .wmv");
         }
 
         if let Some(parent) = output.parent() {
@@ -559,6 +638,7 @@ impl ActiveCapture {
             bitrate,
             fps: config.fps,
             codec: config.codec,
+            container: config.container,
             mic_enabled: config.mic_enabled,
             mic_buffer,
             stats: stats.clone(),

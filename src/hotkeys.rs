@@ -37,26 +37,29 @@ impl Hotkeys {
     pub fn apply(&mut self, cfg: &AppConfig) -> Result<()> {
         self.unregister_all();
 
-        let start = parse_hotkey(&cfg.hotkey_start_stop)?;
-        let mic = parse_hotkey(&cfg.hotkey_mic)?;
-        let cam = parse_hotkey(&cfg.hotkey_camera)?;
-        let pause = parse_hotkey(&cfg.hotkey_pause)?;
-        let annotate = parse_hotkey(&cfg.hotkey_annotate)?;
+        let mut errors = Vec::new();
 
-        self.manager.register(start).context("register start/stop")?;
-        self.manager.register(mic).context("register mic")?;
-        self.manager.register(cam).context("register camera")?;
-        self.manager.register(pause).context("register pause")?;
-        self.manager
-            .register(annotate)
-            .context("register annotate")?;
+        self.start_stop = register_optional(
+            &self.manager,
+            &cfg.hotkey_start_stop,
+            "دەستپێ/وەستان",
+            &mut errors,
+        );
+        self.mic = register_optional(&self.manager, &cfg.hotkey_mic, "مایک", &mut errors);
+        self.camera = register_optional(&self.manager, &cfg.hotkey_camera, "کامێرا", &mut errors);
+        self.pause = register_optional(&self.manager, &cfg.hotkey_pause, "پۆز", &mut errors);
+        self.annotate =
+            register_optional(&self.manager, &cfg.hotkey_annotate, "قەلەم", &mut errors);
 
-        self.start_stop = Some(start);
-        self.mic = Some(mic);
-        self.camera = Some(cam);
-        self.pause = Some(pause);
-        self.annotate = Some(annotate);
-        Ok(())
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            bail!(errors.join(" · "))
+        }
+    }
+
+    pub fn suspend(&mut self) {
+        self.unregister_all();
     }
 
     fn unregister_all(&mut self) {
@@ -103,6 +106,31 @@ impl Hotkeys {
     }
 }
 
+fn register_optional(
+    manager: &GlobalHotKeyManager,
+    raw: &str,
+    label: &str,
+    errors: &mut Vec<String>,
+) -> Option<HotKey> {
+    let s = raw.trim();
+    if s.is_empty() || s == "—" || s == "-" || s == "none" {
+        return None;
+    }
+    match parse_hotkey(s) {
+        Ok(hk) => match manager.register(hk) {
+            Ok(()) => Some(hk),
+            Err(e) => {
+                errors.push(format!("{label}: {e}"));
+                None
+            }
+        },
+        Err(e) => {
+            errors.push(format!("{label}: {e}"));
+            None
+        }
+    }
+}
+
 fn parse_hotkey(s: &str) -> Result<HotKey> {
     let mut mods = Modifiers::empty();
     let mut code: Option<Code> = None;
@@ -118,10 +146,10 @@ fn parse_hotkey(s: &str) -> Result<HotKey> {
         }
     }
     let Some(code) = code else {
-        bail!("hotkey missing key: {s}");
+        bail!("کلیل دیاری نەکرا: {s}");
     };
     if mods.is_empty() {
-        bail!("hotkey needs a modifier: {s}");
+        bail!("پێویستە Ctrl/Shift/Alt هەبێت: {s}");
     }
     Ok(HotKey::new(Some(mods), code))
 }
@@ -177,8 +205,21 @@ fn code_from_str(s: &str) -> Result<Code> {
         "F10" => Code::F10,
         "F11" => Code::F11,
         "F12" => Code::F12,
-        "SPACE" | " " => Code::Space,
-        other => bail!("unsupported key: {other}"),
+        "SPACE" | " " | "SPACEBAR" => Code::Space,
+        "TAB" => Code::Tab,
+        "ENTER" | "RETURN" => Code::Enter,
+        "BACKSPACE" => Code::Backspace,
+        "DELETE" | "DEL" => Code::Delete,
+        "INSERT" | "INS" => Code::Insert,
+        "HOME" => Code::Home,
+        "END" => Code::End,
+        "PAGEUP" | "PAGE UP" | "PGUP" => Code::PageUp,
+        "PAGEDOWN" | "PAGE DOWN" | "PGDN" => Code::PageDown,
+        "ARROWUP" | "UP" => Code::ArrowUp,
+        "ARROWDOWN" | "DOWN" => Code::ArrowDown,
+        "ARROWLEFT" | "LEFT" => Code::ArrowLeft,
+        "ARROWRIGHT" | "RIGHT" => Code::ArrowRight,
+        other => bail!("کلیلی پشتگیری نەکراو: {other}"),
     };
     Ok(code)
 }

@@ -1,9 +1,9 @@
 /target/
 /recordings/
+/dist/
 *.mp4
 .DS_Store
 Thumbs.db
 *.exe
 _tmp_ar/
 reel-settings.json
-
