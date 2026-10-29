@@ -5,6 +5,7 @@ mod audio;
 mod config;
 mod hotkeys;
 mod icon_data;
+mod preview;
 mod recorder;
 
 use std::cell::RefCell;
@@ -23,6 +24,8 @@ use tao::{
 #[cfg(windows)]
 use tao::platform::windows::{WindowBuilderExtWindows, WindowExtWindows};
 use wry::WebViewBuilder;
+#[cfg(windows)]
+use wry::WebViewExtWindows;
 
 #[cfg(windows)]
 mod win_capture_exclude {
@@ -36,10 +39,10 @@ mod win_capture_exclude {
     }
 }
 
-use audio::MicCapture;
+use audio::{MicCapture, NoiseReduceConfig};
 use config::AppConfig;
 use hotkeys::{HotAction, Hotkeys};
-use recorder::{RecordConfig, RecordingSession};
+use recorder::{CaptureMode, RecordConfig, RecordingSession, RegionRect};
 
 #[derive(Debug, Deserialize)]
 struct IpcMsg {
@@ -50,6 +53,20 @@ struct IpcMsg {
     monitor_b: Option<usize>,
     #[serde(default)]
     dual: Option<bool>,
+    #[serde(default)]
+    capture_mode: Option<String>,
+    #[serde(default)]
+    region_x: Option<u32>,
+    #[serde(default)]
+    region_y: Option<u32>,
+    #[serde(default)]
+    region_w: Option<u32>,
+    #[serde(default)]
+    region_h: Option<u32>,
+    #[serde(default)]
+    game_hwnd: Option<String>,
+    #[serde(default)]
+    game_title: Option<String>,
     #[serde(default)]
     cursor: bool,
     #[serde(default)]
@@ -65,6 +82,11 @@ struct IpcMsg {
     #[serde(default)]
     #[allow(non_snake_case)]
     micDevice: Option<String>,
+    #[serde(default)]
+    noise_reduce: Option<bool>,
+    #[serde(default)]
+    #[allow(non_snake_case)]
+    noiseStrength: Option<u8>,
     #[serde(default)]
     camera: Option<bool>,
     #[serde(default)]
@@ -150,6 +172,8 @@ struct AppState {
     rebind_hotkeys: bool,
     suspend_hotkeys: bool,
     pending_drag: Option<(f64, f64)>,
+    region_picker_visible: bool,
+    game_windows: Vec<recorder::WindowInfo>,
 }
 
 impl AppState {
@@ -179,7 +203,14 @@ impl AppState {
         }
         if monitors.len() < 2 {
             config.dual_screen = false;
+            if config.capture_mode == "dual" {
+                config.capture_mode = "screen".into();
+            }
         }
+        if config.dual_screen && config.capture_mode == "screen" {
+            config.capture_mode = "dual".into();
+        }
+        let game_windows = recorder::list_windows().unwrap_or_default();
         Self {
             session: None,
             mic: None,
@@ -203,7 +234,17 @@ impl AppState {
             rebind_hotkeys: false,
             suspend_hotkeys: false,
             pending_drag: None,
+            region_picker_visible: false,
+            game_windows,
         }
+    }
+
+    fn capture_mode(&self) -> CaptureMode {
+        CaptureMode::parse(&self.config.capture_mode)
+    }
+
+    fn refresh_game_windows(&mut self) {
+        self.game_windows = recorder::list_windows().unwrap_or_default();
     }
 
     fn is_recording(&self) -> bool {
@@ -215,13 +256,41 @@ impl AppState {
         if let Some(b) = msg.monitor_b {
             self.config.monitor_index_b = b;
         }
-        if let Some(d) = msg.dual {
+        if let Some(mode) = &msg.capture_mode {
+            let mode = CaptureMode::parse(mode);
+            self.config.capture_mode = mode.as_str().into();
+            self.config.dual_screen = mode == CaptureMode::Dual && self.monitors.len() >= 2;
+            if mode == CaptureMode::Dual && self.monitors.len() < 2 {
+                self.config.capture_mode = CaptureMode::Screen.as_str().into();
+            }
+        } else if let Some(d) = msg.dual {
             self.config.dual_screen = d && self.monitors.len() >= 2;
+            self.config.capture_mode = if self.config.dual_screen {
+                CaptureMode::Dual.as_str().into()
+            } else if self.capture_mode() == CaptureMode::Dual {
+                CaptureMode::Screen.as_str().into()
+            } else {
+                self.config.capture_mode.clone()
+            };
         }
         if self.config.dual_screen && self.config.monitor_index_b == self.config.monitor_index {
             self.config.monitor_index_b = (0..self.monitors.len())
                 .find(|&i| i != self.config.monitor_index)
                 .unwrap_or(self.config.monitor_index);
+        }
+        if let (Some(x), Some(y), Some(w), Some(h)) =
+            (msg.region_x, msg.region_y, msg.region_w, msg.region_h)
+        {
+            self.config.region_x = x;
+            self.config.region_y = y;
+            self.config.region_w = w;
+            self.config.region_h = h;
+        }
+        if let Some(h) = &msg.game_hwnd {
+            self.config.game_hwnd = h.clone();
+        }
+        if let Some(t) = &msg.game_title {
+            self.config.game_title = t.clone();
         }
         self.config.show_cursor = msg.cursor;
         if let Some(q) = &msg.quality {
@@ -241,6 +310,12 @@ impl AppState {
         }
         if let Some(d) = &msg.micDevice {
             self.config.mic_device_id = d.clone();
+        }
+        if let Some(n) = msg.noise_reduce {
+            self.config.noise_reduce = n;
+        }
+        if let Some(s) = msg.noiseStrength {
+            self.config.noise_strength = s.clamp(0, 100);
         }
         if let Some(c) = msg.camera {
             self.config.camera_enabled = c;
@@ -300,8 +375,8 @@ impl AppState {
         let next = !session.is_paused();
         session.set_paused(next);
         if next {
-            self.status = "تۆمار وەستێنرا (پۆز) — دەتوانیت بەردەوام بیت".into();
-            self.push_toast("پۆز", false);
+            self.status = "تۆمار وەستێنرا (پاوس) — دەتوانیت بەردەوام بیت".into();
+            self.push_toast("پاوس", false);
         } else {
             self.status = "بەردەوامبوونەوەی تۆمار".into();
             self.push_toast("بەردەوامبوونەوە", false);
@@ -338,6 +413,13 @@ impl AppState {
     }
 
     fn record_config(&self) -> RecordConfig {
+        let mode = self.capture_mode();
+        let game_hwnd = self
+            .config
+            .game_hwnd
+            .trim()
+            .parse::<isize>()
+            .unwrap_or(0);
         RecordConfig {
             monitor_index: self.config.monitor_index,
             show_cursor: self.config.show_cursor,
@@ -346,6 +428,15 @@ impl AppState {
             codec: self.config.codec(),
             container: self.config.container(),
             mic_enabled: self.config.mic_enabled,
+            mode,
+            region: RegionRect {
+                x: self.config.region_x,
+                y: self.config.region_y,
+                w: self.config.region_w,
+                h: self.config.region_h,
+            },
+            game_hwnd,
+            game_title: self.config.game_title.clone(),
         }
     }
 
@@ -356,19 +447,40 @@ impl AppState {
             (0, 0, false, false)
         };
 
-        let dual_label = if self.config.dual_screen && self.monitors.len() >= 2 {
-            "دوو سکرین"
+        let mode = self.capture_mode();
+        let summary = self.record_config().summary_ckb();
+        let region_label = if self.config.region_w >= 32 && self.config.region_h >= 32 {
+            format!(
+                "{}×{} @ {},{}",
+                self.config.region_w,
+                self.config.region_h,
+                self.config.region_x,
+                self.config.region_y
+            )
         } else {
-            "یەک سکرین"
+            "هەڵنەبژێردراوە".into()
         };
-        let summary = format!("{} · {}", self.record_config().summary_ckb(), dual_label);
 
         json!({
             "monitors": self.monitors,
             "selected": self.config.monitor_index,
             "selectedB": self.config.monitor_index_b,
-            "dual": self.config.dual_screen && self.monitors.len() >= 2,
+            "dual": mode == CaptureMode::Dual && self.monitors.len() >= 2,
             "dualAvailable": self.monitors.len() >= 2,
+            "captureMode": mode.as_str(),
+            "regionX": self.config.region_x,
+            "regionY": self.config.region_y,
+            "regionW": self.config.region_w,
+            "regionH": self.config.region_h,
+            "regionLabel": region_label,
+            "regionReady": self.config.region_w >= 32 && self.config.region_h >= 32,
+            "gameHwnd": self.config.game_hwnd,
+            "gameTitle": self.config.game_title,
+            "windows": self.game_windows.iter().map(|w| json!({
+                "hwnd": w.hwnd.to_string(),
+                "title": w.title,
+                "process": w.process,
+            })).collect::<Vec<_>>(),
             "cursor": self.config.show_cursor,
             "quality": self.config.quality,
             "fps": self.config.fps,
@@ -377,6 +489,8 @@ impl AppState {
             "mic": self.config.mic_enabled,
             "micDevices": self.mic_devices.iter().map(|(id, label)| json!({"id": id, "label": label})).collect::<Vec<_>>(),
             "micDevice": self.config.mic_device_id,
+            "noiseReduce": self.config.noise_reduce,
+            "noiseStrength": self.config.noise_strength,
             "camera": self.camera_visible,
             "camDevices": self.camera_devices.iter().map(|(id, label)| json!({"id": id, "label": label})).collect::<Vec<_>>(),
             "camDevice": self.config.camera_device_id,
@@ -421,7 +535,12 @@ impl AppState {
 }
 
 fn main() -> Result<()> {
-    let event_loop = EventLoopBuilder::<()>::with_user_event().build();
+    #[derive(Debug, Clone, Copy)]
+    enum AppEvent {
+        Ipc,
+        Preview,
+    }
+    let event_loop = EventLoopBuilder::<AppEvent>::with_user_event().build();
     let window_icon = tao::window::Icon::from_rgba(
         icon_data::RGBA.to_vec(),
         icon_data::WIDTH,
@@ -432,9 +551,9 @@ fn main() -> Result<()> {
     let main_window = Rc::new(
         WindowBuilder::new()
             .with_title("ڕیل — سکرین ڕیکۆردەر")
-            .with_inner_size(LogicalSize::new(400.0, 720.0))
-            .with_min_inner_size(LogicalSize::new(360.0, 640.0))
-            .with_resizable(false)
+            .with_inner_size(LogicalSize::new(1180.0, 760.0))
+            .with_min_inner_size(LogicalSize::new(980.0, 680.0))
+            .with_resizable(true)
             .with_window_icon(window_icon.clone())
             .build(&event_loop)
             .context("failed to create window")?,
@@ -479,13 +598,13 @@ fn main() -> Result<()> {
     #[allow(unused_mut)]
     let mut toolbar_builder = WindowBuilder::new()
         .with_title("ڕیل — ئامرازەکان")
-        .with_inner_size(LogicalSize::new(740.0, 72.0))
+        .with_inner_size(LogicalSize::new(820.0, 72.0))
         .with_decorations(false)
         .with_transparent(true)
         .with_always_on_top(true)
         .with_resizable(false)
         .with_visible(false)
-        .with_window_icon(window_icon);
+        .with_window_icon(window_icon.clone());
     #[cfg(windows)]
     {
         toolbar_builder = toolbar_builder
@@ -498,13 +617,57 @@ fn main() -> Result<()> {
             .context("failed to create annotate toolbar")?,
     );
 
+    #[allow(unused_mut)]
+    let mut region_builder = WindowBuilder::new()
+        .with_title("ڕیل — هەڵبژاردنی ناوچە")
+        .with_inner_size(LogicalSize::new(800.0, 600.0))
+        .with_decorations(false)
+        .with_transparent(true)
+        .with_always_on_top(true)
+        .with_resizable(false)
+        .with_visible(false)
+        .with_window_icon(window_icon);
+    #[cfg(windows)]
+    {
+        region_builder = region_builder
+            .with_skip_taskbar(true)
+            .with_undecorated_shadow(false);
+    }
+    let region_window = Rc::new(
+        region_builder
+            .build(&event_loop)
+            .context("failed to create region picker window")?,
+    );
+
     let state = Rc::new(RefCell::new(AppState::new()));
     let main_html = build_html(include_str!("../assets/ui.html"));
     let cam_html = include_str!("../assets/camera.html").to_string();
     let annotate_html = include_str!("../assets/annotate.html").to_string();
     let annotate_toolbar_html = include_str!("../assets/annotate-toolbar.html").to_string();
+    let region_html = include_str!("../assets/region.html").to_string();
 
     let proxy = event_loop.create_proxy();
+    let preview = preview::PreviewHub::start({
+        let proxy = proxy.clone();
+        move || {
+            let _ = proxy.send_event(AppEvent::Preview);
+        }
+    });
+    preview.set_monitor_index(state.borrow().config.monitor_index);
+    {
+        let st = state.borrow();
+        if st.capture_mode() == CaptureMode::Region
+            && st.config.region_w >= 32
+            && st.config.region_h >= 32
+        {
+            preview.set_crop(Some(preview::PreviewCrop {
+                x: st.config.region_x,
+                y: st.config.region_y,
+                w: st.config.region_w,
+                h: st.config.region_h,
+            }));
+        }
+    }
     let main_webview = WebViewBuilder::new(main_window.as_ref())
         .with_html(main_html)
         .with_ipc_handler({
@@ -514,7 +677,7 @@ fn main() -> Result<()> {
             move |request| {
                 if let Ok(msg) = serde_json::from_str::<IpcMsg>(request.body()) {
                     handle_main_ipc(&state, &msg, &main_window);
-                    let _ = proxy.send_event(());
+                    let _ = proxy.send_event(AppEvent::Ipc);
                 }
             }
         })
@@ -530,12 +693,14 @@ fn main() -> Result<()> {
             move |request| {
                 if let Ok(msg) = serde_json::from_str::<IpcMsg>(request.body()) {
                     handle_cam_ipc(&state, &msg);
-                    let _ = proxy.send_event(());
+                    let _ = proxy.send_event(AppEvent::Ipc);
                 }
             }
         })
         .build()
         .context("failed to create camera webview")?;
+    #[cfg(windows)]
+    allow_webview_camera(&cam_webview);
 
     let annotate_webview = WebViewBuilder::new(annotate_window.as_ref())
         .with_html(annotate_html)
@@ -546,7 +711,7 @@ fn main() -> Result<()> {
             move |request| {
                 if let Ok(msg) = serde_json::from_str::<IpcMsg>(request.body()) {
                     handle_annotate_ipc(&state, &msg);
-                    let _ = proxy.send_event(());
+                    let _ = proxy.send_event(AppEvent::Ipc);
                 }
             }
         })
@@ -558,28 +723,53 @@ fn main() -> Result<()> {
         .with_transparent(true)
         .with_ipc_handler({
             let state = Rc::clone(&state);
+            let main_window = Rc::clone(&main_window);
             let proxy = proxy.clone();
             move |request| {
                 if let Ok(msg) = serde_json::from_str::<IpcMsg>(request.body()) {
-                    handle_annotate_ipc(&state, &msg);
-                    let _ = proxy.send_event(());
+                    match msg.cmd.as_str() {
+                        "toggle_pause" | "stop" => {
+                            handle_main_ipc(&state, &msg, main_window.as_ref());
+                        }
+                        _ => handle_annotate_ipc(&state, &msg),
+                    }
+                    let _ = proxy.send_event(AppEvent::Ipc);
                 }
             }
         })
         .build()
         .context("failed to create annotate toolbar webview")?;
 
+    let region_webview = WebViewBuilder::new(region_window.as_ref())
+        .with_html(region_html)
+        .with_transparent(true)
+        .with_ipc_handler({
+            let state = Rc::clone(&state);
+            let proxy = proxy.clone();
+            move |request| {
+                if let Ok(msg) = serde_json::from_str::<IpcMsg>(request.body()) {
+                    handle_region_ipc(&state, &msg);
+                    let _ = proxy.send_event(AppEvent::Ipc);
+                }
+            }
+        })
+        .build()
+        .context("failed to create region picker webview")?;
+
     // Toolbar must stay visible to you but never appear in the recording.
     exclude_window_from_capture(annotate_toolbar.as_ref());
+    exclude_window_from_capture(region_window.as_ref());
 
     let main_webview = Rc::new(main_webview);
     let cam_webview = Rc::new(cam_webview);
     let annotate_webview = Rc::new(annotate_webview);
     let annotate_toolbar_webview = Rc::new(annotate_toolbar_webview);
+    let _region_webview = Rc::new(region_webview);
     let main_id = main_window.id();
     let cam_id = cam_window.id();
     let annotate_id = annotate_window.id();
     let annotate_toolbar_id = annotate_toolbar.id();
+    let region_id = region_window.id();
 
     let mut hotkeys = Hotkeys::new().ok();
     if let Some(hk) = hotkeys.as_mut() {
@@ -677,9 +867,30 @@ fn main() -> Result<()> {
         }
 
         match event {
-            Event::UserEvent(()) => {
+            Event::UserEvent(AppEvent::Preview) => {
+                if let Some(frame) = preview.take() {
+                    push_preview_frame(&main_webview, &frame);
+                }
+            }
+            Event::UserEvent(AppEvent::Ipc) => {
                 {
                     let mut st = state.borrow_mut();
+                    preview.set_monitor_index(st.config.monitor_index);
+                    preview.set_enabled(!st.saving && !st.region_picker_visible);
+                    preview.set_recording(st.is_recording());
+                    if st.capture_mode() == CaptureMode::Region
+                        && st.config.region_w >= 32
+                        && st.config.region_h >= 32
+                    {
+                        preview.set_crop(Some(preview::PreviewCrop {
+                            x: st.config.region_x,
+                            y: st.config.region_y,
+                            w: st.config.region_w,
+                            h: st.config.region_h,
+                        }));
+                    } else {
+                        preview.set_crop(None);
+                    }
                     if let Some((dx, dy)) = st.pending_drag.take() {
                         if let Ok(pos) = cam_window.outer_position() {
                             cam_window.set_outer_position(PhysicalPosition::new(
@@ -715,6 +926,11 @@ fn main() -> Result<()> {
                     &annotate_toolbar,
                     &annotate_toolbar_webview,
                 );
+                sync_region_picker(
+                    &mut state.borrow_mut(),
+                    &region_window,
+                    &main_window,
+                );
                 if state.borrow().camera_visible {
                     cam_window.set_always_on_top(true);
                 }
@@ -722,8 +938,11 @@ fn main() -> Result<()> {
                 if state.borrow().annotate_visible && !state.borrow().annotate_toolbar_hidden {
                     annotate_toolbar.set_always_on_top(true);
                 }
+                if state.borrow().region_picker_visible {
+                    region_window.set_always_on_top(true);
+                }
                 refresh_ui(&main_webview, &state);
-                push_cam_settings(&cam_webview, &state.borrow());
+                push_cam_settings(&cam_webview, &state.borrow(), false);
             }
             Event::WindowEvent {
                 window_id,
@@ -744,14 +963,22 @@ fn main() -> Result<()> {
                     annotate_toolbar.set_visible(false);
                     let _ = annotate_window.set_ignore_cursor_events(false);
                     refresh_ui(&main_webview, &state);
+                } else if window_id == region_id {
+                    let mut st = state.borrow_mut();
+                    st.region_picker_visible = false;
+                    region_window.set_visible(false);
+                    main_window.set_visible(true);
+                    refresh_ui(&main_webview, &state);
                 } else if window_id == main_id {
                     let mut st = state.borrow_mut();
                     if st.is_recording() {
                         let _ = finish_stop(&mut st, &main_window);
                     }
                     st.annotate_visible = false;
+                    st.region_picker_visible = false;
                     annotate_window.set_visible(false);
                     annotate_toolbar.set_visible(false);
+                    region_window.set_visible(false);
                     st.mic = None;
                     *control_flow = ControlFlow::Exit;
                 }
@@ -768,27 +995,32 @@ fn refresh_ui(webview: &wry::WebView, state: &Rc<RefCell<AppState>>) {
 
 fn sync_camera_window(st: &mut AppState, cam_window: &Window, cam_webview: &wry::WebView) {
     let want = st.config.camera_enabled;
+    let mut just_opened = false;
     if want && !st.camera_visible {
         let size = st.config.camera_size as f64;
         let _ = cam_window.set_inner_size(LogicalSize::new(size, size));
         cam_window.set_visible(true);
         cam_window.set_always_on_top(true);
         st.camera_visible = true;
+        just_opened = true;
         st.push_toast("پۆپاپی کامێرا کرایەوە", false);
     } else if !want && st.camera_visible {
         cam_window.set_visible(false);
         st.camera_visible = false;
         st.push_toast("پۆپاپی کامێرا داخرا", false);
+        let _ = cam_webview.evaluate_script(
+            "window.__camStop && window.__camStop();",
+        );
     } else if st.camera_visible {
         let size = st.config.camera_size as f64;
         let _ = cam_window.set_inner_size(LogicalSize::new(size, size));
     }
     if st.camera_visible {
-        push_cam_settings(cam_webview, st);
+        push_cam_settings(cam_webview, st, just_opened);
     }
 }
 
-fn push_cam_settings(webview: &wry::WebView, st: &AppState) {
+fn push_cam_settings(webview: &wry::WebView, st: &AppState, force_start: bool) {
     let payload = json!({
         "greenscreen": st.config.greenscreen,
         "strength": st.config.greenscreen_strength,
@@ -797,11 +1029,48 @@ fn push_cam_settings(webview: &wry::WebView, st: &AppState) {
         "shape": st.config.camera_shape,
         "filter": st.config.camera_filter,
         "deviceId": st.config.camera_device_id,
+        "start": force_start,
     });
     let s = payload.to_string().replace('\\', "\\\\").replace('\'', "\\'");
     let _ = webview.evaluate_script(&format!(
         "window.__camUpdate && window.__camUpdate(JSON.parse('{s}'));"
     ));
+}
+
+/// WebView2 denies camera/mic by default unless PermissionRequested is handled.
+#[cfg(windows)]
+fn allow_webview_camera(webview: &wry::WebView) {
+    use webview2_com::{
+        Microsoft::Web::WebView2::Win32::{
+            COREWEBVIEW2_PERMISSION_KIND_CAMERA, COREWEBVIEW2_PERMISSION_KIND_MICROPHONE,
+            COREWEBVIEW2_PERMISSION_STATE_ALLOW,
+        },
+        PermissionRequestedEventHandler,
+    };
+
+    let controller = webview.controller();
+    let Ok(core) = (unsafe { controller.CoreWebView2() }) else {
+        return;
+    };
+    let mut token = Default::default();
+    let _ = unsafe {
+        core.add_PermissionRequested(
+            &PermissionRequestedEventHandler::create(Box::new(move |_, args| {
+                let Some(args) = args else {
+                    return Ok(());
+                };
+                let mut kind = Default::default();
+                args.PermissionKind(&mut kind)?;
+                if kind == COREWEBVIEW2_PERMISSION_KIND_CAMERA
+                    || kind == COREWEBVIEW2_PERMISSION_KIND_MICROPHONE
+                {
+                    args.SetState(COREWEBVIEW2_PERMISSION_STATE_ALLOW)?;
+                }
+                Ok(())
+            })),
+            &mut token,
+        )
+    };
 }
 
 fn monitor_geom(window: &Window, index: usize) -> (i32, i32, u32, u32) {
@@ -817,6 +1086,14 @@ fn monitor_geom(window: &Window, index: usize) -> (i32, i32, u32, u32) {
         return (p.x, p.y, s.width, s.height);
     }
     (0, 0, 1920, 1080)
+}
+
+fn push_preview_frame(webview: &wry::WebView, frame: &preview::PreviewFrame) {
+    // Fast path: data URLs are base64-safe — skip JSON stringify/escape overhead.
+    let _ = webview.evaluate_script(&format!(
+        "window.__previewFrame&&window.__previewFrame({{url:'{}',w:{},h:{}}})",
+        frame.data_url, frame.width, frame.height
+    ));
 }
 
 fn eval_json(webview: &wry::WebView, fn_name: &str, payload: &serde_json::Value) {
@@ -850,7 +1127,7 @@ fn sync_annotate_windows(
         let (x, y, w, h) = monitor_geom(canvas, st.config.monitor_index);
 
         // Floating toolbar — visible to you, excluded from capture.
-        let tw = 740i32;
+        let tw = 820i32;
         let th = 72i32;
         let gap = 16i32;
         let band = th + gap + 8;
@@ -883,6 +1160,7 @@ fn sync_annotate_windows(
         st.annotate_clear = false;
         st.annotate_focus_toolbar = false;
 
+        let paused = st.session.as_ref().is_some_and(|s| s.is_paused());
         if clear {
             eval_json(canvas_webview, "__annotateUpdate", &json!({ "clear": true }));
         }
@@ -895,7 +1173,7 @@ fn sync_annotate_windows(
             eval_json(
                 toolbar_webview,
                 "__toolbarUpdate",
-                &json!({ "showToolbar": true, "tool": "pen" }),
+                &json!({ "showToolbar": true, "tool": "pen", "paused": paused }),
             );
         }
         if let Some(cmd) = cmd {
@@ -905,6 +1183,11 @@ fn sync_annotate_windows(
                 eval_json(toolbar_webview, "__toolbarSync", &cmd);
             }
         }
+        eval_json(
+            toolbar_webview,
+            "__toolbarSync",
+            &json!({ "paused": paused }),
+        );
     } else {
         if st.annotate_visible && !st.is_recording() {
             st.annotate_visible = false;
@@ -963,14 +1246,49 @@ fn restore_recorder_after_capture(main_window: &Window) {
     let _ = main_window.set_focus();
 }
 
+fn sync_region_picker(st: &mut AppState, region_window: &Window, main_window: &Window) {
+    if st.region_picker_visible && !st.is_recording() && !st.saving {
+        let (x, y, w, h) = monitor_geom(main_window, st.config.monitor_index);
+        region_window.set_outer_position(PhysicalPosition::new(x, y));
+        let _ = region_window.set_inner_size(PhysicalSize::new(w, h));
+        region_window.set_always_on_top(true);
+        region_window.set_visible(true);
+        main_window.set_visible(false);
+        let _ = region_window.set_focus();
+    } else if region_window.is_visible() {
+        st.region_picker_visible = false;
+        region_window.set_visible(false);
+        if !st.is_recording() {
+            main_window.set_visible(true);
+        }
+    }
+}
+
 fn start_recording(state: &Rc<RefCell<AppState>>, main_window: &Window) {
     let mut st = state.borrow_mut();
-    if st.is_recording() || st.saving {
+    if st.is_recording() || st.saving || st.region_picker_visible {
         return;
     }
     st.error = None;
 
-    let dual = st.config.dual_screen && st.monitors.len() >= 2;
+    let mode = st.capture_mode();
+    if mode == CaptureMode::Region
+        && (st.config.region_w < 32 || st.config.region_h < 32)
+    {
+        st.error = Some("سەرەتا ناوچەیەک هەڵبژێرە".into());
+        st.push_toast("ناوچە دیاری نەکرا", true);
+        return;
+    }
+    if mode == CaptureMode::Game
+        && st.config.game_hwnd.trim().is_empty()
+        && st.config.game_title.trim().is_empty()
+    {
+        st.error = Some("سەرەتا پەنجەرەی گەیم هەڵبژێرە".into());
+        st.push_toast("پەنجەرەی گەیم دیاری نەکرا", true);
+        return;
+    }
+
+    let dual = mode == CaptureMode::Dual && st.monitors.len() >= 2;
     let idx_a = st.config.monitor_index;
     let idx_b = st.config.monitor_index_b;
     if dual && idx_a == idx_b {
@@ -980,13 +1298,23 @@ fn start_recording(state: &Rc<RefCell<AppState>>, main_window: &Window) {
     }
 
     let mut config_a = st.record_config();
+    if dual {
+        config_a.mode = CaptureMode::Dual;
+    }
     let mic_id = st.config.mic_device_id.clone();
+    let noise_cfg = NoiseReduceConfig {
+        enabled: st.config.noise_reduce,
+        strength: st.config.noise_strength,
+    };
     let mic_buffer = if config_a.mic_enabled {
-        match MicCapture::start(if mic_id.is_empty() {
-            None
-        } else {
-            Some(mic_id.as_str())
-        }) {
+        match MicCapture::start(
+            if mic_id.is_empty() {
+                None
+            } else {
+                Some(mic_id.as_str())
+            },
+            noise_cfg,
+        ) {
             Ok(mic) => {
                 let label = mic.device_label.clone();
                 let buf = mic.buffer.clone();
@@ -994,7 +1322,12 @@ fn start_recording(state: &Rc<RefCell<AppState>>, main_window: &Window) {
                 // Warm up a moment so WASAPI starts delivering samples.
                 std::thread::sleep(std::time::Duration::from_millis(120));
                 st.mic = Some(mic);
-                st.push_toast(format!("مایک: {label}"), false);
+                let noise_note = if noise_cfg.enabled {
+                    format!(" · سڕینەوەی noise ({})", noise_cfg.strength)
+                } else {
+                    String::new()
+                };
+                st.push_toast(format!("مایک: {label}{noise_note}"), false);
                 Some(buf)
             }
             Err(e) => {
@@ -1080,22 +1413,16 @@ fn start_recording(state: &Rc<RefCell<AppState>>, main_window: &Window) {
         .collect::<Vec<_>>()
         .join(" · ");
     st.status = format!("خەریکی تۆمارکردنە · {summary} · {res} · {names}");
-    if st.config.annotate_enabled {
-        st.annotate_visible = true;
-        st.annotate_pass = false;
-        st.annotate_toolbar_hidden = false;
-        st.annotate_focus_toolbar = true;
-        st.annotate_clear = true;
-        st.push_toast(
-            "تۆمار دەستی پێکرد — تووڵبار لە ڤیدیۆدا دەرناکەوێت",
-            false,
-        );
-    } else {
-        st.push_toast(
-            "تۆمار دەستی پێکرد — تۆ دەیبینیت، لە ڤیدیۆدا دەرناچێت",
-            false,
-        );
-    }
+    // Don't auto-open pen/toolbar — user enables it via hotkey or the annotate button.
+    st.annotate_visible = false;
+    st.annotate_pass = false;
+    st.annotate_toolbar_hidden = false;
+    st.annotate_focus_toolbar = false;
+    st.annotate_clear = false;
+    st.push_toast(
+        "تۆمار دەستی پێکرد — تۆ دەیبینیت، لە ڤیدیۆدا دەرناچێت",
+        false,
+    );
     st.session = Some(session);
 }
 
@@ -1185,6 +1512,53 @@ fn handle_main_ipc(state: &Rc<RefCell<AppState>>, msg: &IpcMsg, main_window: &Wi
                     let _ = open::that(parent);
                 }
             }
+        }
+        "pick_region" => {
+            let mut st = state.borrow_mut();
+            if st.is_recording() || st.saving {
+                return;
+            }
+            st.apply_ipc_settings(msg);
+            st.config.capture_mode = CaptureMode::Region.as_str().into();
+            st.config.dual_screen = false;
+            st.config.save();
+            st.region_picker_visible = true;
+            st.push_toast("ناوچەیەک بکێشە لەسەر شاشەکە", false);
+        }
+        "refresh_windows" => {
+            let mut st = state.borrow_mut();
+            st.refresh_game_windows();
+            st.push_toast("لیستی پەنجەرەکان نوێکرایەوە", false);
+        }
+        _ => {}
+    }
+}
+
+fn handle_region_ipc(state: &Rc<RefCell<AppState>>, msg: &IpcMsg) {
+    match msg.cmd.as_str() {
+        "region_ready" => {}
+        "region_done" => {
+            let mut st = state.borrow_mut();
+            if let (Some(x), Some(y), Some(w), Some(h)) =
+                (msg.region_x, msg.region_y, msg.region_w, msg.region_h)
+            {
+                st.config.region_x = x & !1;
+                st.config.region_y = y & !1;
+                st.config.region_w = w.max(2) & !1;
+                st.config.region_h = h.max(2) & !1;
+                st.config.capture_mode = CaptureMode::Region.as_str().into();
+                st.config.dual_screen = false;
+                st.config.save();
+                let rw = st.config.region_w;
+                let rh = st.config.region_h;
+                st.push_toast(format!("ناوچە: {rw}×{rh}"), false);
+            }
+            st.region_picker_visible = false;
+        }
+        "region_cancel" => {
+            let mut st = state.borrow_mut();
+            st.region_picker_visible = false;
+            st.push_toast("هەڵبژاردنی ناوچە هەڵوەشایەوە", false);
         }
         _ => {}
     }

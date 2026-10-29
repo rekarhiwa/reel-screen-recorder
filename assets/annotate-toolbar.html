@@ -131,6 +131,13 @@
       <button class="tool" id="hideUi" title="شاردنەوە" type="button">
         <svg viewBox="0 0 24 24"><path d="M4 12s3.5-6 8-6 8 6 8 6-3.5 6-8 6-8-6-8-6z"/><circle cx="12" cy="12" r="2.5"/></svg>
       </button>
+      <div class="sep"></div>
+      <button class="tool" id="pauseBtn" title="پاوس / بەردەوام" type="button">
+        <svg id="pauseIcon" viewBox="0 0 24 24"><path d="M8 5v14"/><path d="M16 5v14"/></svg>
+      </button>
+      <button class="tool" id="stopBtn" title="وەستاندنی تۆمار" type="button" style="color:#ff6574">
+        <svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" stroke="none"/></svg>
+      </button>
     </div>
   </div>
   <script>
@@ -183,12 +190,37 @@
       send("annotate_cmd", { action: "hide_toolbar" });
       showHint("شاردرا · Ctrl+Shift+D بۆ گەڕانەوە");
     });
+    function setPausedUi(paused) {
+      const btn = document.getElementById("pauseBtn");
+      const icon = document.getElementById("pauseIcon");
+      btn.classList.toggle("active", !!paused);
+      if (paused) {
+        icon.innerHTML = '<path d="M8 5l12 7-12 7z" fill="currentColor" stroke="none"/>';
+        btn.title = "بەردەوامبوونەوە";
+        showHint("پاوس — کلیک بۆ بەردەوامبوون");
+      } else {
+        icon.innerHTML = '<path d="M8 5v14"/><path d="M16 5v14"/>';
+        btn.title = "پاوس";
+      }
+    }
+    document.getElementById("pauseBtn").addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      send("toggle_pause");
+    });
+    document.getElementById("stopBtn").addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      send("stop");
+    });
     window.__toolbarSync = (cfg) => {
       if (cfg && cfg.tool) applyToolUi(String(cfg.tool));
+      if (cfg && cfg.paused != null) setPausedUi(!!cfg.paused);
     };
     window.__toolbarUpdate = (cfg) => {
       if (!cfg) return;
       if (cfg.tool) applyToolUi(String(cfg.tool));
+      if (cfg.paused != null) setPausedUi(!!cfg.paused);
       if (cfg.showToolbar) {
         const t = cfg.tool ? String(cfg.tool) : "pen";
         setTool(t, true);

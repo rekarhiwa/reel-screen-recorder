@@ -18,6 +18,7 @@ use windows_capture::{
         ColorFormat, CursorCaptureSettings, DirtyRegionSettings, DrawBorderSettings,
         MinimumUpdateIntervalSettings, SecondaryWindowSettings, Settings,
     },
+    window::Window,
 };
 
 #[derive(Clone)]
@@ -212,6 +213,67 @@ pub fn allowed_fps(fps: u32) -> bool {
     matches!(fps, 24 | 30 | 48 | 60 | 90 | 120)
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CaptureMode {
+    Screen,
+    Dual,
+    Region,
+    Game,
+}
+
+impl CaptureMode {
+    pub fn parse(s: &str) -> Self {
+        match s {
+            "dual" => Self::Dual,
+            "region" => Self::Region,
+            "game" => Self::Game,
+            _ => Self::Screen,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Screen => "screen",
+            Self::Dual => "dual",
+            Self::Region => "region",
+            Self::Game => "game",
+        }
+    }
+
+    pub fn label_ckb(self) -> &'static str {
+        match self {
+            Self::Screen => "سکرین",
+            Self::Dual => "دوو سکرین",
+            Self::Region => "ناوچە",
+            Self::Game => "گەیم / پەنجەرە",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct RegionRect {
+    pub x: u32,
+    pub y: u32,
+    pub w: u32,
+    pub h: u32,
+}
+
+impl RegionRect {
+    pub fn is_valid(self) -> bool {
+        self.w >= 32 && self.h >= 32
+    }
+
+    /// Even dimensions for MF encoder.
+    pub fn aligned(self) -> Self {
+        Self {
+            x: self.x & !1,
+            y: self.y & !1,
+            w: self.w.max(2) & !1,
+            h: self.h.max(2) & !1,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct RecordConfig {
     pub monitor_index: usize,
@@ -221,6 +283,10 @@ pub struct RecordConfig {
     pub codec: Codec,
     pub container: ContainerFormat,
     pub mic_enabled: bool,
+    pub mode: CaptureMode,
+    pub region: RegionRect,
+    pub game_hwnd: isize,
+    pub game_title: String,
 }
 
 impl Default for RecordConfig {
@@ -233,6 +299,10 @@ impl Default for RecordConfig {
             codec: Codec::Hevc,
             container: ContainerFormat::Mp4,
             mic_enabled: true,
+            mode: CaptureMode::Screen,
+            region: RegionRect::default(),
+            game_hwnd: 0,
+            game_title: String::new(),
         }
     }
 }
@@ -242,13 +312,15 @@ impl RecordConfig {
         if !allowed_fps(self.fps) {
             self.fps = 60;
         }
+        self.region = self.region.aligned();
         self
     }
 
     pub fn summary_ckb(&self) -> String {
         let mic = if self.mic_enabled { "مایک" } else { "بێدەنگ" };
         format!(
-            "{} · {}fps · {} · {} · {}",
+            "{} · {} · {}fps · {} · {} · {}",
+            self.mode.label_ckb(),
             self.quality.label_ckb(),
             self.fps,
             self.codec.label(),
@@ -256,6 +328,13 @@ impl RecordConfig {
             mic
         )
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct WindowInfo {
+    pub hwnd: isize,
+    pub title: String,
+    pub process: String,
 }
 
 #[derive(Clone)]
@@ -370,6 +449,8 @@ struct CaptureFlags {
     mic_enabled: bool,
     mic_buffer: Option<crate::audio::MicBuffer>,
     stats: SharedStats,
+    /// Crop rectangle inside the captured surface (monitor or window), inclusive-exclusive.
+    crop: Option<(u32, u32, u32, u32)>,
 }
 
 struct Recorder {
@@ -380,6 +461,8 @@ struct Recorder {
     mic_enabled: bool,
     mic_buffer: Option<crate::audio::MicBuffer>,
     fps: u32,
+    crop: Option<(u32, u32, u32, u32)>,
+    scratch: Vec<u8>,
 }
 
 impl GraphicsCaptureApiHandler for Recorder {
@@ -419,6 +502,8 @@ impl GraphicsCaptureApiHandler for Recorder {
             mic_enabled: flags.mic_enabled,
             mic_buffer: flags.mic_buffer,
             fps,
+            crop: flags.crop,
+            scratch: Vec::new(),
         })
     }
 
@@ -457,23 +542,18 @@ impl GraphicsCaptureApiHandler for Recorder {
             self.last_sent = Some(now);
             self.stats.frame_count.fetch_add(1, Ordering::SeqCst);
 
-            if self.mic_enabled {
-                // Exactly one video-frame of stereo i16 @ 48 kHz (channels*bytes).
-                // Previous code asked for 2× and padded silence — audio ran ahead and sounded empty.
+            let pcm = if self.mic_enabled {
                 let frames = (48_000 / self.fps.max(1)).max(1) as usize;
                 let want = frames * 4;
-                // Allow catching up a bit if mic backlog grew (max ~2 frames).
                 let take = want.saturating_mul(2);
                 let mut pcm = self
                     .mic_buffer
                     .as_ref()
                     .map(|b| b.drain(take))
                     .unwrap_or_default();
-                // Keep A/V lock: never send less than one frame (pad silence if quiet).
                 if pcm.len() < want {
                     pcm.resize(want, 0);
                 } else {
-                    // Trim to whole frames; prefer ~1 frame unless backlog is large.
                     let keep = if pcm.len() > want + want / 2 {
                         ((pcm.len() / 4) * 4).min(want * 2)
                     } else {
@@ -481,8 +561,32 @@ impl GraphicsCaptureApiHandler for Recorder {
                     };
                     pcm.truncate(keep);
                 }
+                Some(pcm)
+            } else {
+                None
+            };
+
+            if let Some((x0, y0, x1, y1)) = self.crop {
+                let ts = frame.timestamp().map(|t| t.Duration).unwrap_or(0);
+                let cw = x1 - x0;
+                let ch = y1 - y0;
+                let cropped = frame
+                    .buffer_crop(x0, y0, x1, y1)
+                    .context("failed to crop frame")?;
+                // MF CreateFromBuffer expects BGRA bottom-up.
+                let top_down = cropped.as_nopadding_buffer(&mut self.scratch);
+                let flipped = flip_bgra_vertical(top_down, cw, ch);
                 encoder
-                    .send_frame_with_audio(frame, &pcm)
+                    .send_frame_buffer(&flipped, ts)
+                    .context("failed to encode cropped frame")?;
+                if let Some(pcm) = pcm.as_ref() {
+                    encoder
+                        .send_audio_buffer(pcm, 0)
+                        .context("failed to encode audio")?;
+                }
+            } else if let Some(pcm) = pcm.as_ref() {
+                encoder
+                    .send_frame_with_audio(frame, pcm)
                     .context("failed to encode frame+audio")?;
             } else {
                 encoder
@@ -535,6 +639,82 @@ pub fn list_monitors() -> Result<Vec<MonitorInfo>> {
     }
 
     Ok(out)
+}
+
+/// Capturable top-level windows for Game mode (excludes untitled / tool windows).
+pub fn list_windows() -> Result<Vec<WindowInfo>> {
+    let windows = Window::enumerate().context("failed to enumerate windows")?;
+    let mut out = Vec::new();
+    for w in windows {
+        let title = match w.title() {
+            Ok(t) => t,
+            Err(_) => continue,
+        };
+        let title = title.trim().to_string();
+        if title.is_empty() {
+            continue;
+        }
+        // Skip our own UI windows.
+        if title.contains("ڕیل") || title.contains("REEL") {
+            continue;
+        }
+        let process = w.process_name().unwrap_or_default();
+        let process_l = process.to_ascii_lowercase();
+        if process_l.contains("screen-recorder") || process_l == "reel.exe" {
+            continue;
+        }
+        let hwnd = w.as_raw_hwnd() as isize;
+        out.push(WindowInfo {
+            hwnd,
+            title,
+            process,
+        });
+    }
+    out.sort_by(|a, b| {
+        a.title
+            .to_lowercase()
+            .cmp(&b.title.to_lowercase())
+            .then_with(|| a.hwnd.cmp(&b.hwnd))
+    });
+    Ok(out)
+}
+
+fn resolve_game_window(config: &RecordConfig) -> Result<Window> {
+    if config.game_hwnd != 0 {
+        let w = Window::from_raw_hwnd(config.game_hwnd as *mut std::ffi::c_void);
+        if w.is_valid() {
+            return Ok(w);
+        }
+    }
+    let title = config.game_title.trim();
+    if !title.is_empty() {
+        if let Ok(w) = Window::from_name(title) {
+            if w.is_valid() {
+                return Ok(w);
+            }
+        }
+        if let Ok(w) = Window::from_contains_name(title) {
+            if w.is_valid() {
+                return Ok(w);
+            }
+        }
+    }
+    bail!("پەنجەرە نەدۆزرایەوە")
+}
+
+fn flip_bgra_vertical(src: &[u8], width: u32, height: u32) -> Vec<u8> {
+    let stride = (width as usize).saturating_mul(4);
+    let h = height as usize;
+    if stride == 0 || h == 0 || src.len() < stride.saturating_mul(h) {
+        return src.to_vec();
+    }
+    let mut out = vec![0u8; stride * h];
+    for y in 0..h {
+        let src_off = y * stride;
+        let dst_off = (h - 1 - y) * stride;
+        out[dst_off..dst_off + stride].copy_from_slice(&src[src_off..src_off + stride]);
+    }
+    out
 }
 
 pub fn recordings_dir() -> Result<PathBuf> {
@@ -603,18 +783,6 @@ impl ActiveCapture {
             }
         }
 
-        let monitors = Monitor::enumerate().context("failed to enumerate monitors")?;
-        let monitor = monitors.get(config.monitor_index).with_context(|| {
-            format!(
-                "monitor index {} not found (found {} monitor(s))",
-                config.monitor_index,
-                monitors.len()
-            )
-        })?;
-
-        let width = monitor.width().context("failed to read monitor width")? & !1;
-        let height = monitor.height().context("failed to read monitor height")? & !1;
-
         let stats = SharedStats::new();
         stats.reset();
 
@@ -623,41 +791,108 @@ impl ActiveCapture {
         } else {
             CursorCaptureSettings::WithoutCursor
         };
-
-        let bitrate = config.quality.bitrate_bps(
-            width,
-            height,
-            config.fps,
-            config.codec,
-        );
-
-        let flags = CaptureFlags {
-            output: output.clone(),
-            width,
-            height,
-            bitrate,
-            fps: config.fps,
-            codec: config.codec,
-            container: config.container,
-            mic_enabled: config.mic_enabled,
-            mic_buffer,
-            stats: stats.clone(),
-        };
-
         let interval = Duration::from_secs_f64(1.0 / f64::from(config.fps.max(1)));
-        let settings = Settings::new(
-            *monitor,
-            cursor,
-            DrawBorderSettings::Default,
-            SecondaryWindowSettings::Default,
-            MinimumUpdateIntervalSettings::Custom(interval),
-            DirtyRegionSettings::Default,
-            // Match Media Foundation encoder input (avoids color conversion softness).
-            ColorFormat::Bgra8,
-            flags,
-        );
 
-        let control = Recorder::start_free_threaded(settings).context("failed to start capture")?;
+        let (width, height, bitrate, control) = match config.mode {
+            CaptureMode::Game => {
+                let window = resolve_game_window(&config)
+                    .context("پەنجەرەی گەیم نەدۆزرایەوە — یارییەکە بکەرەوە و دووبارە هەڵیبژێرە")?;
+                let w = (window.width().unwrap_or(1280).max(2) as u32) & !1;
+                let h = (window.height().unwrap_or(720).max(2) as u32) & !1;
+                let bitrate =
+                    config
+                        .quality
+                        .bitrate_bps(w, h, config.fps, config.codec);
+                let flags = CaptureFlags {
+                    output: output.clone(),
+                    width: w,
+                    height: h,
+                    bitrate,
+                    fps: config.fps,
+                    codec: config.codec,
+                    container: config.container,
+                    mic_enabled: config.mic_enabled,
+                    mic_buffer,
+                    stats: stats.clone(),
+                    crop: None,
+                };
+                let settings = Settings::new(
+                    window,
+                    cursor,
+                    DrawBorderSettings::Default,
+                    SecondaryWindowSettings::Default,
+                    MinimumUpdateIntervalSettings::Custom(interval),
+                    DirtyRegionSettings::Default,
+                    ColorFormat::Bgra8,
+                    flags,
+                );
+                let control = Recorder::start_free_threaded(settings)
+                    .context("failed to start game capture")?;
+                (w, h, bitrate, control)
+            }
+            CaptureMode::Region | CaptureMode::Screen | CaptureMode::Dual => {
+                let monitors = Monitor::enumerate().context("failed to enumerate monitors")?;
+                let monitor = monitors.get(config.monitor_index).with_context(|| {
+                    format!(
+                        "monitor index {} not found (found {} monitor(s))",
+                        config.monitor_index,
+                        monitors.len()
+                    )
+                })?;
+                let mon_w = monitor.width().context("failed to read monitor width")? & !1;
+                let mon_h = monitor.height().context("failed to read monitor height")? & !1;
+
+                let (out_w, out_h, crop) = if config.mode == CaptureMode::Region {
+                    let r = config.region.aligned();
+                    if !r.is_valid() {
+                        bail!("ناوچە دیاری نەکرا — سەرەتا ناوچەیەک هەڵبژێرە");
+                    }
+                    let x1 = (r.x + r.w).min(mon_w);
+                    let y1 = (r.y + r.h).min(mon_h);
+                    let x0 = r.x.min(x1.saturating_sub(2));
+                    let y0 = r.y.min(y1.saturating_sub(2));
+                    let rw = (x1 - x0) & !1;
+                    let rh = (y1 - y0) & !1;
+                    if rw < 32 || rh < 32 {
+                        bail!("ناوچەکە زۆر بچووکە");
+                    }
+                    (rw, rh, Some((x0, y0, x0 + rw, y0 + rh)))
+                } else {
+                    (mon_w, mon_h, None)
+                };
+
+                let bitrate =
+                    config
+                        .quality
+                        .bitrate_bps(out_w, out_h, config.fps, config.codec);
+                let flags = CaptureFlags {
+                    output: output.clone(),
+                    width: out_w,
+                    height: out_h,
+                    bitrate,
+                    fps: config.fps,
+                    codec: config.codec,
+                    container: config.container,
+                    mic_enabled: config.mic_enabled,
+                    mic_buffer,
+                    stats: stats.clone(),
+                    crop,
+                };
+                let settings = Settings::new(
+                    *monitor,
+                    cursor,
+                    DrawBorderSettings::Default,
+                    SecondaryWindowSettings::Default,
+                    MinimumUpdateIntervalSettings::Custom(interval),
+                    DirtyRegionSettings::Default,
+                    ColorFormat::Bgra8,
+                    flags,
+                );
+                let control =
+                    Recorder::start_free_threaded(settings).context("failed to start capture")?;
+                (out_w, out_h, bitrate, control)
+            }
+        };
 
         Ok(Self {
             control,

@@ -15,6 +15,22 @@ pub struct AppConfig {
     pub monitor_index_b: usize,
     #[serde(default)]
     pub dual_screen: bool,
+    /// screen | dual | region | game
+    #[serde(default = "default_capture_mode")]
+    pub capture_mode: String,
+    #[serde(default)]
+    pub region_x: u32,
+    #[serde(default)]
+    pub region_y: u32,
+    #[serde(default)]
+    pub region_w: u32,
+    #[serde(default)]
+    pub region_h: u32,
+    /// HWND as decimal string (may go stale); title used as fallback.
+    #[serde(default)]
+    pub game_hwnd: String,
+    #[serde(default)]
+    pub game_title: String,
     pub show_cursor: bool,
     pub quality: String,
     pub fps: u32,
@@ -24,6 +40,12 @@ pub struct AppConfig {
     pub mic_enabled: bool,
     #[serde(default)]
     pub mic_device_id: String,
+    /// Remove mic hiss / rumble (high-pass + adaptive gate).
+    #[serde(default = "default_true")]
+    pub noise_reduce: bool,
+    /// 0..=100
+    #[serde(default = "default_noise_strength")]
+    pub noise_strength: u8,
     pub camera_enabled: bool,
     #[serde(default)]
     pub camera_device_id: String,
@@ -76,6 +98,14 @@ fn default_container() -> String {
     "mp4".into()
 }
 
+fn default_noise_strength() -> u8 {
+    40
+}
+
+fn default_capture_mode() -> String {
+    "screen".into()
+}
+
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
@@ -83,6 +113,13 @@ impl Default for AppConfig {
             monitor_index: 0,
             monitor_index_b: 1,
             dual_screen: false,
+            capture_mode: default_capture_mode(),
+            region_x: 0,
+            region_y: 0,
+            region_w: 0,
+            region_h: 0,
+            game_hwnd: String::new(),
+            game_title: String::new(),
             show_cursor: true,
             quality: "high".into(),
             fps: 30,
@@ -90,6 +127,8 @@ impl Default for AppConfig {
             container: default_container(),
             mic_enabled: true,
             mic_device_id: String::new(),
+            noise_reduce: true,
+            noise_strength: default_noise_strength(),
             camera_enabled: false,
             camera_device_id: String::new(),
             camera_shape: "circle".into(),
@@ -103,7 +142,7 @@ impl Default for AppConfig {
             hotkey_mic: "Ctrl+Shift+M".into(),
             hotkey_camera: "Ctrl+Shift+C".into(),
             hotkey_pause: "Ctrl+Shift+P".into(),
-            annotate_enabled: true,
+            annotate_enabled: false,
             hotkey_annotate: default_annotate_hotkey(),
         }
     }

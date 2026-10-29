@@ -47,7 +47,7 @@ impl Hotkeys {
         );
         self.mic = register_optional(&self.manager, &cfg.hotkey_mic, "مایک", &mut errors);
         self.camera = register_optional(&self.manager, &cfg.hotkey_camera, "کامێرا", &mut errors);
-        self.pause = register_optional(&self.manager, &cfg.hotkey_pause, "پۆز", &mut errors);
+        self.pause = register_optional(&self.manager, &cfg.hotkey_pause, "پاوس", &mut errors);
         self.annotate =
             register_optional(&self.manager, &cfg.hotkey_annotate, "قەلەم", &mut errors);
 

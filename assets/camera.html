@@ -46,6 +46,7 @@
       background: rgba(14,18,24,0.72);
       text-align: center;
       padding: 16px;
+      white-space: pre-line;
     }
     #hint.hidden { display: none; }
   </style>
@@ -69,6 +70,7 @@
       deviceId: "",
       stream: null,
       starting: false,
+      live: false,
     };
 
     const FILTERS = {
@@ -105,8 +107,18 @@
       };
     }
 
+    function stopStream() {
+      if (state.stream) {
+        state.stream.getTracks().forEach((t) => t.stop());
+        state.stream = null;
+      }
+      video.srcObject = null;
+      state.live = false;
+    }
+
     async function reportDevices(currentId) {
       try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
         const all = await navigator.mediaDevices.enumerateDevices();
         const cams = all
           .filter((d) => d.kind === "videoinput")
@@ -118,46 +130,92 @@
       } catch (_) {}
     }
 
+    function buildAttempts(deviceId) {
+      const attempts = [];
+      if (deviceId) {
+        attempts.push({
+          video: {
+            deviceId: { exact: deviceId },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: false,
+        });
+        attempts.push({
+          video: { deviceId: { ideal: deviceId } },
+          audio: false,
+        });
+      }
+      // No facingMode — many laptop webcams reject "user".
+      attempts.push({
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: false,
+      });
+      attempts.push({ video: true, audio: false });
+      attempts.push({
+        video: {
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+        },
+        audio: false,
+      });
+      return attempts;
+    }
+
+    function friendlyError(e) {
+      const name = (e && e.name) || "";
+      const msg = (e && e.message) || String(e || "");
+      if (name === "NotAllowedError" || /permission|denied|not allowed/i.test(msg)) {
+        return "مۆڵەتی کامێرا رەتکرایەوە\nلە ڕێکخستنەکانی ویندۆز → Privacy → Camera\nڕێگە بدە بە ڕیل";
+      }
+      if (name === "NotFoundError" || /not found|no device/i.test(msg)) {
+        return "کامێرا نەدۆزرایەوە\nدڵنیابە کامێرا کار دەکات و داخراو نییە";
+      }
+      if (name === "NotReadableError" || /in use|busy|readable/i.test(msg)) {
+        return "کامێرا لەلایەن بەرنامەیەکی دیکەوە گیراوە\nئەپەکانی دیکە دابخە و دووبارە هەوڵبدە";
+      }
+      return "کامێرا بەردەست نییە\n" + (msg || name || "");
+    }
+
     async function startCamera(deviceId) {
       if (state.starting) return;
       state.starting = true;
       try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error("getUserMedia پشتگیری ناکرێت");
+        }
         hint.textContent = "داوای مۆڵەتی کامێرا…";
         hint.classList.remove("hidden");
-        if (state.stream) {
-          state.stream.getTracks().forEach((t) => t.stop());
-          state.stream = null;
+        stopStream();
+
+        const attempts = buildAttempts(deviceId || "");
+        let lastErr = null;
+        for (const constraints of attempts) {
+          try {
+            state.stream = await navigator.mediaDevices.getUserMedia(constraints);
+            lastErr = null;
+            break;
+          } catch (e) {
+            lastErr = e;
+          }
         }
-        const constraints = {
-          video: {
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            facingMode: "user",
-          },
-          audio: false,
-        };
-        if (deviceId) {
-          constraints.video = {
-            deviceId: { exact: deviceId },
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-          };
-        }
-        state.stream = await navigator.mediaDevices.getUserMedia(constraints);
+        if (!state.stream) throw lastErr || new Error("failed");
+
         const track = state.stream.getVideoTracks()[0];
         const settings = track ? track.getSettings() : {};
         state.deviceId = settings.deviceId || deviceId || "";
         video.srcObject = state.stream;
-        await video.play();
+        await video.play().catch(() => {});
+        state.live = true;
         hint.classList.add("hidden");
         await reportDevices(state.deviceId);
         loop();
       } catch (e) {
-        if (deviceId) {
-          state.starting = false;
-          return startCamera("");
-        }
-        hint.textContent = "کامێرا بەردەست نییە\n" + (e.message || "");
+        stopStream();
+        hint.textContent = friendlyError(e);
         hint.classList.remove("hidden");
       } finally {
         state.starting = false;
@@ -189,7 +247,7 @@
       if (looping) return;
       looping = true;
       const tick = () => {
-        if (video.readyState >= 2) {
+        if (state.live && video.readyState >= 2) {
           const w = video.videoWidth || 640;
           const h = video.videoHeight || 480;
           if (canvas.width !== w) canvas.width = w;
@@ -232,6 +290,12 @@
       wrap.classList.remove("dragging");
     });
 
+    window.__camStop = () => {
+      stopStream();
+      hint.textContent = "کامێرا…";
+      hint.classList.remove("hidden");
+    };
+
     window.__camUpdate = (cfg) => {
       if (cfg.greenscreen != null) state.greenscreen = !!cfg.greenscreen;
       if (cfg.strength != null) state.strength = Number(cfg.strength);
@@ -241,15 +305,19 @@
       if (cfg.filter) state.filter = String(cfg.filter);
       if (cfg.deviceId != null) {
         const next = String(cfg.deviceId);
-        if (next && next !== state.deviceId) {
+        if (next !== state.deviceId) {
           state.deviceId = next;
-          startCamera(next);
+          if (state.live || cfg.start) startCamera(next);
         }
+      }
+      if (cfg.start && !state.live && !state.starting) {
+        startCamera(state.deviceId || "");
       }
     };
 
     applyShape("circle");
-    startCamera("");
+    // Wait until the host shows the window and sends start=true.
+    // Starting while hidden often fails on laptop privacy / WebView2.
     send("cam_ready");
   </script>
 </body>
